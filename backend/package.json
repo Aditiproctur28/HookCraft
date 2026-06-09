@@ -1,0 +1,26 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/genai": "^2.7.0",
+    "@remotion/bundler": "^4.0.471",
+    "@remotion/player": "^4.0.471",
+    "@remotion/renderer": "^4.0.471",
+    "axios": "^1.17.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "msedge-tts": "^2.0.5",
+    "remotion": "^4.0.471"
+  }
+}
