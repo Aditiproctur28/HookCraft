@@ -27,11 +27,12 @@ function characterPrompt(description) {
  * Phase A — preparation: generate script + a character concept, then PAUSE
  * for user approval. Fire-and-forget; never throws.
  */
-export async function runPreparation(job, { topic, aspectRatio, imageMode, captionStyle }) {
+export async function runPreparation(job, { topic, aspectRatio, imageMode, captionStyle, scriptMode }) {
     const imagesDir = path.join(jobDirFor(job.id), 'images');
     const { fluxWidth, fluxHeight } = resolveDimensions(aspectRatio);
     const resolvedImageMode = ['static', 'narrator'].includes(imageMode) ? imageMode : 'dynamic';
     const isNarrator = resolvedImageMode === 'narrator';
+    const verbatim = scriptMode === 'verbatim';
 
     try {
         // Stash inputs for the production phase.
@@ -43,7 +44,7 @@ export async function runPreparation(job, { topic, aspectRatio, imageMode, capti
             captionStyle: captionStyle === 'sentence' ? 'sentence' : 'word',
         });
 
-        const script = await generateScript(topic, { narrator: isNarrator });
+        const script = await generateScript(topic, { narrator: isNarrator, verbatim });
         if (!script.scenes || script.scenes.length === 0) throw new Error('The script came back with no scenes.');
 
         updateJob(job.id, { _scriptData: script });

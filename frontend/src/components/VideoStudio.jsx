@@ -34,6 +34,10 @@ const IMAGE_MODES = {
     static: { label: 'Static', sub: 'Character · 1 image', icon: '🖼️' },
     narrator: { label: 'Narrator', sub: 'No character · B-roll', icon: '📜' },
 };
+const SCRIPT_MODES = {
+    auto: { label: 'Auto-Generate', sub: 'AI writes the script', icon: '🤖' },
+    verbatim: { label: 'Use My Words', sub: 'Speak my script exactly', icon: '📄' },
+};
 
 // Reusable segmented toggle. cols=2 → horizontal cards; cols>=3 → compact centered cards.
 function OptionGroup({ label, options, value, onChange, disabled, cols = 2 }) {
@@ -76,6 +80,7 @@ export default function VideoStudio() {
     const [aspectRatio, setAspectRatio] = useState('9:16');
     const [captionStyle, setCaptionStyle] = useState('word');
     const [imageMode, setImageMode] = useState('dynamic');
+    const [scriptMode, setScriptMode] = useState('auto');
     const [job, setJob] = useState(null);
     const esRef = useRef(null);
 
@@ -97,7 +102,7 @@ export default function VideoStudio() {
             const res = await fetch(`${API_BASE}/api/video/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topic, aspectRatio, captionStyle, imageMode }),
+                body: JSON.stringify({ topic, aspectRatio, captionStyle, imageMode, scriptMode }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to start the pipeline.');
@@ -143,18 +148,24 @@ export default function VideoStudio() {
 
     return (
         <div className="rounded-3xl border border-hairline bg-surface/80 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-8">
-            {/* Topic input */}
-            <label className="mb-2 block text-sm font-semibold text-slate-300">Your idea</label>
+            {/* Topic / script input */}
+            <label className="mb-2 block text-sm font-semibold text-slate-300">
+                {scriptMode === 'verbatim' ? 'Your script (spoken word-for-word)' : 'Your idea'}
+            </label>
             <textarea
-                rows={4}
+                rows={scriptMode === 'verbatim' ? 6 : 4}
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 disabled={isBusy}
-                placeholder="e.g., A single man explains why active listening wins trust — fast-paced vertical short…"
+                placeholder={scriptMode === 'verbatim'
+                    ? 'Paste the exact narration you want spoken. Every word is kept as-is; we only split it into scenes and add visuals…'
+                    : 'e.g., A single man explains why active listening wins trust — fast-paced vertical short…'}
                 className="w-full resize-y rounded-2xl border border-hairline bg-surface-2 p-4 text-[15px] text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/40 disabled:opacity-60"
             />
 
             {/* Settings */}
+            <OptionGroup label="Script" value={scriptMode} onChange={setScriptMode} disabled={isBusy}
+                options={Object.entries(SCRIPT_MODES).map(([key, s]) => ({ key, ...s }))} />
             <OptionGroup label="Format" value={aspectRatio} onChange={setAspectRatio} disabled={isBusy}
                 options={Object.entries(ASPECTS).map(([key, a]) => ({ key, label: a.label, sub: a.sub, icon: a.icon }))} />
             <OptionGroup label="Captions" value={captionStyle} onChange={setCaptionStyle} disabled={isBusy}

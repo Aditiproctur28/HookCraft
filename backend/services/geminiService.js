@@ -86,13 +86,22 @@ const NARRATOR_SYSTEM_INSTRUCTION = `
     1. Set 'character_description' to "N/A - voiceover narration, no character".
 `;
 
+// Appended on top of the base instruction when the user supplies a finished script.
+const VERBATIM_CLAUSE = `
+    VERBATIM SCRIPT MODE (HIGHEST PRIORITY — OVERRIDES ANY REPHRASING RULE):
+    The user's input is the FINAL, EXACT narration — NOT a topic to expand.
+    1. Use the user's wording WORD-FOR-WORD as 'narration_text'. Do NOT rephrase, shorten, summarize, "improve", add, or remove ANY words. Preserve their exact sentences and punctuation.
+    2. You may ONLY split the text into scenes at natural sentence or line-break boundaries. Each scene's 'narration_text' must be an exact, contiguous slice of the user's text; concatenating all scenes' narration_text in order must reproduce the user's input exactly.
+    3. Still produce 'visual_prompt', 'voice_type', and 'character_description' for each scene/video to drive the visuals — those are yours to write; the narration is not.
+`;
+
 /**
  * Generate a structured video script from a topic.
  * @param {string} topic - The user's topic / rough script.
  * @returns {Promise<{video_metrics: object, scenes: Array}>}
  * @throws {Error} if the API key is missing or generation fails.
  */
-export async function generateScript(topic, { narrator = false } = {}) {
+export async function generateScript(topic, { narrator = false, verbatim = false } = {}) {
     if (!topic || !topic.trim()) {
         throw new Error("Please provide a topic or rough script.");
     }
@@ -102,19 +111,18 @@ export async function generateScript(topic, { narrator = false } = {}) {
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    const prompt = `
-        You are an expert short-form video producer.
-        Take the following request/topic and convert it into a highly engaging, fast-paced vertical video script.
-        Make sure the conversation flows exactly as requested by the user.
+    const prompt = verbatim
+        ? `The text below is the FINAL narration script to use WORD-FOR-WORD. Split it into scenes and build the visuals around it, without changing any of the user's words.\n\nScript:\n"${topic}"`
+        : `You are an expert short-form video producer.\nTake the following request/topic and convert it into a highly engaging, fast-paced vertical video script.\nMake sure the conversation flows exactly as requested by the user.\n\nTopic/Request: "${topic}"`;
 
-        Topic/Request: "${topic}"
-    `;
+    const baseInstruction = narrator ? NARRATOR_SYSTEM_INSTRUCTION : CHARACTER_SYSTEM_INSTRUCTION;
+    const systemInstruction = verbatim ? `${baseInstruction}\n${VERBATIM_CLAUSE}` : baseInstruction;
 
     const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: prompt,
         config: {
-            systemInstruction: narrator ? NARRATOR_SYSTEM_INSTRUCTION : CHARACTER_SYSTEM_INSTRUCTION,
+            systemInstruction,
             responseMimeType: "application/json",
             responseSchema: scriptSchema,
         }
