@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import { withRetry } from './retry.js';
 
 dotenv.config();
 
@@ -118,7 +119,7 @@ export async function generateScript(topic, { narrator = false, verbatim = false
     const baseInstruction = narrator ? NARRATOR_SYSTEM_INSTRUCTION : CHARACTER_SYSTEM_INSTRUCTION;
     const systemInstruction = verbatim ? `${baseInstruction}\n${VERBATIM_CLAUSE}` : baseInstruction;
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: prompt,
         config: {
@@ -126,7 +127,7 @@ export async function generateScript(topic, { narrator = false, verbatim = false
             responseMimeType: "application/json",
             responseSchema: scriptSchema,
         }
-    });
+    }), { label: 'Gemini script generation' });
 
     return JSON.parse(response.text);
 }

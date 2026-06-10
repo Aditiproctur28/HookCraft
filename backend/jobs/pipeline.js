@@ -6,6 +6,7 @@ import { generateSceneImage } from '../services/imageService.js';
 import { generateSceneAudio } from '../services/audioService.js';
 import { renderVideo } from '../services/renderService.js';
 import { resolveDimensions } from '../services/dimensions.js';
+import { cleanErrorMessage } from '../services/retry.js';
 import { getJob, updateJob } from './jobStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -75,7 +76,7 @@ export async function runPreparation(job, { topic, aspectRatio, imageMode, capti
         });
     } catch (err) {
         console.error(`❌ Preparation error (job ${job.id}):`, err);
-        updateJob(job.id, { status: 'error', stage: 'error', message: err.message || 'Preparation failed.', error: err.message || String(err) });
+        updateJob(job.id, { status: 'error', stage: 'error', message: cleanErrorMessage(err), error: err.message || String(err) });
     }
 }
 
@@ -104,7 +105,7 @@ export async function regenerateCharacter(job) {
         });
     } catch (err) {
         console.error(`❌ Regenerate error (job ${job.id}):`, err);
-        updateJob(job.id, { regenerating: false, message: `Regenerate failed: ${err.message}` });
+        updateJob(job.id, { regenerating: false, message: `Regenerate failed: ${cleanErrorMessage(err)}` });
     }
 }
 
@@ -192,6 +193,6 @@ export async function runProduction(job) {
         updateJob(job.id, { status: 'done', stage: 'done', message: 'Done!', pct: 100, downloadUrl: `${PUBLIC_BASE}/jobs/${job.id}/${fileName}` });
     } catch (err) {
         console.error(`❌ Production error (job ${job.id}):`, err);
-        updateJob(job.id, { status: 'error', stage: 'error', message: err.message || 'Production failed.', error: err.message || String(err) });
+        updateJob(job.id, { status: 'error', stage: 'error', message: cleanErrorMessage(err), error: err.message || String(err) });
     }
 }

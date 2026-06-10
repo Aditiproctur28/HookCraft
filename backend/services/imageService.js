@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
+import { withRetry } from './retry.js';
 
 const HF_TOKEN = process.env.HF_TOKEN ? process.env.HF_TOKEN.trim() : "";
 
@@ -29,7 +30,7 @@ export async function generateSceneImage({ visualPrompt, sceneNumber, outDir, wi
     const parameters = { width, height };
     if (seed !== undefined && seed !== null) parameters.seed = seed;
 
-    const response = await axios({
+    const response = await withRetry(() => axios({
         url: "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell",
         method: "POST",
         headers: {
@@ -42,7 +43,7 @@ export async function generateSceneImage({ visualPrompt, sceneNumber, outDir, wi
             parameters
         },
         responseType: 'arraybuffer'
-    });
+    }), { label: `FLUX image (scene ${sceneNumber ?? 'character'})` });
 
     if (!fs.existsSync(outDir)) {
         fs.mkdirSync(outDir, { recursive: true });
