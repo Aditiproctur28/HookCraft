@@ -6,14 +6,14 @@ import { runPipeline } from '../jobs/pipeline.js';
  * Starts the silent pipeline and immediately returns a job id.
  */
 export const startVideo = (req, res) => {
-    const { topic } = req.body;
+    const { topic, aspectRatio } = req.body;
     if (!topic || !topic.trim()) {
         return res.status(400).json({ error: 'Please provide a topic.' });
     }
 
     const job = createJob();
     // Fire-and-forget; progress is observed via the SSE stream below.
-    runPipeline(job, { topic });
+    runPipeline(job, { topic, aspectRatio });
 
     return res.status(202).json({ jobId: job.id });
 };

@@ -12,13 +12,18 @@ export const RemotionVideo = () => {
             width={1080}
             height={1920}
             defaultProps={{
-                scenes: []
+                scenes: [],
+                width: 1080,
+                height: 1920,
             }}
-            // 🚀 THE FIX: This dynamically measures the scenes passed from your backend and extends the video length to match!
+            // Dynamically measure scene durations AND apply the aspect-ratio
+            // dimensions passed from the backend (Phase 4).
             calculateMetadata={({ props }) => {
                 const totalDuration = props.scenes.reduce((total, scene) => total + scene.durationInFrames, 0);
                 return {
-                    durationInFrames: totalDuration > 0 ? totalDuration : 150
+                    durationInFrames: totalDuration > 0 ? totalDuration : 150,
+                    width: props.width || 1080,
+                    height: props.height || 1920,
                 };
             }}
         />

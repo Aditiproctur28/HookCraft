@@ -27,13 +27,16 @@ async function getServeUrl() {
  * @param {function} [opts.onProgress]        - Optional (0..1) progress callback.
  * @returns {Promise<string>} the output file path.
  */
-export async function renderVideo({ scenes, totalDurationInFrames, outputLocation, onProgress }) {
+export async function renderVideo({ scenes, totalDurationInFrames, width, height, outputLocation, onProgress }) {
     const serveUrl = await getServeUrl();
+
+    // width/height flow into calculateMetadata, which sets the composition size.
+    const inputProps = { scenes, width, height };
 
     const composition = await selectComposition({
         serveUrl,
         id: 'MasterVideo',
-        inputProps: { scenes }
+        inputProps,
     });
 
     const exportDir = path.dirname(outputLocation);
@@ -46,7 +49,7 @@ export async function renderVideo({ scenes, totalDurationInFrames, outputLocatio
         serveUrl,
         codec: 'h264',
         outputLocation,
-        inputProps: { scenes },
+        inputProps,
         durationInFrames: totalDurationInFrames || composition.durationInFrames,
         onProgress: onProgress ? ({ progress }) => onProgress(progress) : undefined,
     });

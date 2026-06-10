@@ -20,8 +20,15 @@ const STAGE_LABEL = {
     error: 'Failed',
 };
 
+// Aspect-ratio presets: composition size + on-screen preview size.
+const ASPECTS = {
+    '9:16': { label: 'Vertical', sub: '9:16', icon: '📱', compW: 1080, compH: 1920, viewW: 288, viewH: 512 },
+    '16:9': { label: 'Horizontal', sub: '16:9', icon: '🖥️', compW: 1920, compH: 1080, viewW: 512, viewH: 288 },
+};
+
 export default function VideoStudio() {
     const [topic, setTopic] = useState('');
+    const [aspectRatio, setAspectRatio] = useState('9:16');
     const [job, setJob] = useState(null);
     const esRef = useRef(null);
 
@@ -40,7 +47,7 @@ export default function VideoStudio() {
             const res = await fetch(`${API_BASE}/api/video/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topic }),
+                body: JSON.stringify({ topic, aspectRatio }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to start the pipeline.');
@@ -64,6 +71,10 @@ export default function VideoStudio() {
     };
 
     const currentStageIndex = job ? STAGES.findIndex((s) => s.key === job.stage) : -1;
+    // Preview frame matches the rendered video's orientation when known.
+    const previewAspect = (job?.width && job?.height)
+        ? ASPECTS[job.width >= job.height ? '16:9' : '9:16']
+        : ASPECTS[aspectRatio];
     const buttonLabel = isRunning
         ? (STAGE_LABEL[job.stage] || job.message || 'Working…')
         : (isDone ? 'Generate Another' : 'Generate Video');
@@ -80,6 +91,36 @@ export default function VideoStudio() {
                 placeholder="e.g., A single man explains why active listening wins trust — fast-paced vertical short…"
                 className="w-full resize-y rounded-2xl border border-hairline bg-surface-2 p-4 text-[15px] text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/40 disabled:opacity-60"
             />
+
+            {/* Aspect-ratio toggle */}
+            <div className="mt-5">
+                <label className="mb-2 block text-sm font-semibold text-slate-300">Format</label>
+                <div className="grid grid-cols-2 gap-3">
+                    {Object.entries(ASPECTS).map(([key, a]) => {
+                        const selected = aspectRatio === key;
+                        return (
+                            <button
+                                key={key}
+                                type="button"
+                                onClick={() => !isRunning && setAspectRatio(key)}
+                                disabled={isRunning}
+                                className={[
+                                    'flex items-center gap-3 rounded-2xl border p-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60',
+                                    selected
+                                        ? 'border-brand-500 bg-brand-500/15 ring-2 ring-brand-500/30'
+                                        : 'border-hairline bg-surface-2 hover:border-slate-600',
+                                ].join(' ')}
+                            >
+                                <span className="text-2xl">{a.icon}</span>
+                                <span>
+                                    <span className="block text-sm font-semibold text-white">{a.label}</span>
+                                    <span className="block text-xs text-slate-400">{a.sub}</span>
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
 
             {/* Generate button */}
             <button
@@ -149,12 +190,12 @@ export default function VideoStudio() {
                     <div className="overflow-hidden rounded-[20px] border-2 border-brand-500/60 shadow-2xl shadow-brand-600/20">
                         <Player
                             component={MasterVideo}
-                            inputProps={{ scenes: job.scenes }}
+                            inputProps={{ scenes: job.scenes, width: previewAspect.compW, height: previewAspect.compH }}
                             durationInFrames={Math.max(job.totalDurationInFrames || 0, 150)}
                             fps={30}
-                            compositionWidth={1080}
-                            compositionHeight={1920}
-                            style={{ width: '288px', height: '512px' }}
+                            compositionWidth={job.width || previewAspect.compW}
+                            compositionHeight={job.height || previewAspect.compH}
+                            style={{ width: `${previewAspect.viewW}px`, height: `${previewAspect.viewH}px` }}
                             controls
                             autoPlay
                         />
