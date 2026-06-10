@@ -30,16 +30,18 @@ const CAPTION_STYLES = {
     sentence: { label: 'Full Sentence', sub: 'Whole line per scene', icon: '📝' },
 };
 const IMAGE_MODES = {
-    dynamic: { label: 'Dynamic Scenes', sub: 'New art each line', icon: '🎞️' },
-    static: { label: 'Static Character', sub: 'One locked backdrop', icon: '🖼️' },
+    dynamic: { label: 'Dynamic', sub: 'Character · per scene', icon: '🎞️' },
+    static: { label: 'Static', sub: 'Character · 1 image', icon: '🖼️' },
+    narrator: { label: 'Narrator', sub: 'No character · B-roll', icon: '📜' },
 };
 
-// Reusable two-card segmented toggle.
-function OptionGroup({ label, options, value, onChange, disabled }) {
+// Reusable segmented toggle. cols=2 → horizontal cards; cols>=3 → compact centered cards.
+function OptionGroup({ label, options, value, onChange, disabled, cols = 2 }) {
+    const compact = cols >= 3;
     return (
         <div className="mt-5">
             <label className="mb-2 block text-sm font-semibold text-slate-300">{label}</label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className={`grid gap-3 ${cols === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 {options.map((opt) => {
                     const selected = value === opt.key;
                     return (
@@ -49,7 +51,8 @@ function OptionGroup({ label, options, value, onChange, disabled }) {
                             onClick={() => !disabled && onChange(opt.key)}
                             disabled={disabled}
                             className={[
-                                'flex items-center gap-3 rounded-2xl border p-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60',
+                                'rounded-2xl border p-3.5 transition disabled:cursor-not-allowed disabled:opacity-60',
+                                compact ? 'flex flex-col items-center gap-1 text-center' : 'flex items-center gap-3 text-left',
                                 selected
                                     ? 'border-brand-500 bg-brand-500/15 ring-2 ring-brand-500/30'
                                     : 'border-hairline bg-surface-2 hover:border-slate-600',
@@ -127,7 +130,10 @@ export default function VideoStudio() {
         }
     };
 
-    const currentStageIndex = job ? STAGES.findIndex((s) => s.key === job.stage) : -1;
+    // Narrator mode skips the character step entirely.
+    const isNarrator = (job?.imageMode || imageMode) === 'narrator';
+    const stages = STAGES.filter((s) => !(isNarrator && s.key === 'character'));
+    const currentStageIndex = job ? stages.findIndex((s) => s.key === job.stage) : -1;
     const previewAspect = (job?.width && job?.height)
         ? ASPECTS[job.width >= job.height ? '16:9' : '9:16']
         : ASPECTS[aspectRatio];
@@ -153,7 +159,7 @@ export default function VideoStudio() {
                 options={Object.entries(ASPECTS).map(([key, a]) => ({ key, label: a.label, sub: a.sub, icon: a.icon }))} />
             <OptionGroup label="Captions" value={captionStyle} onChange={setCaptionStyle} disabled={isBusy}
                 options={Object.entries(CAPTION_STYLES).map(([key, c]) => ({ key, ...c }))} />
-            <OptionGroup label="Imagery" value={imageMode} onChange={setImageMode} disabled={isBusy}
+            <OptionGroup label="Imagery" value={imageMode} onChange={setImageMode} disabled={isBusy} cols={3}
                 options={Object.entries(IMAGE_MODES).map(([key, m]) => ({ key, ...m }))} />
 
             {/* Generate button */}
@@ -170,7 +176,7 @@ export default function VideoStudio() {
             {/* Stage stepper */}
             {job && (
                 <div className="mt-7 flex items-center justify-between gap-1">
-                    {STAGES.map((stage, i) => {
+                    {stages.map((stage, i) => {
                         const done = isDone || currentStageIndex > i;
                         const active = currentStageIndex === i && !isDone;
                         return (
@@ -188,7 +194,7 @@ export default function VideoStudio() {
                                         {stage.label}
                                     </span>
                                 </div>
-                                {i < STAGES.length - 1 && (
+                                {i < stages.length - 1 && (
                                     <div className={`h-px flex-1 ${currentStageIndex > i || isDone ? 'bg-emerald-500/40' : 'bg-hairline'}`} />
                                 )}
                             </React.Fragment>

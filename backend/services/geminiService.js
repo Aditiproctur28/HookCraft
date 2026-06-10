@@ -47,7 +47,7 @@ const scriptSchema = {
     required: ["video_metrics", "character_description", "scenes"]
 };
 
-const SYSTEM_INSTRUCTION = `
+const CHARACTER_SYSTEM_INSTRUCTION = `
     You are an expert AI video pipeline director.
 
     CRITICAL CHARACTER COUNT & ANTI-HALLUCINATION RULES:
@@ -69,13 +69,30 @@ const SYSTEM_INSTRUCTION = `
     1. Output a 'character_description' that is the EXACT same visual anchor you embed in the scenes, but stripped down to ONLY the physical appearance (age, gender, hair, build, clothing, colors). No environment, no camera framing, no actions. This is used to render a clean standalone portrait of the actor.
 `;
 
+const NARRATOR_SYSTEM_INSTRUCTION = `
+    You are an expert short-form documentary director creating a VOICEOVER NARRATION video with NO on-screen presenter or character.
+
+    NARRATION RULES:
+    1. Convert the topic into engaging, fast-paced narration split into scenes. Keep each line punchy.
+    2. SINGLE NARRATOR VOICE: set 'voice_type' to the SAME value ('male' or 'female') for EVERY scene.
+
+    VISUAL PROMPT RULES (B-ROLL, NO CHARACTER):
+    1. Each 'visual_prompt' is a cinematic, richly detailed STATIC shot of the SUBJECT MATTER being narrated (the place, object, architecture, landscape, or a close-up detail) — NOT a person speaking to camera. Do NOT introduce a narrator, host, or presenter.
+    2. SUBJECT/LOCATION LOCK: Establish the core subject and setting precisely and keep that description consistent across every scene; the ONLY thing that changes between scenes is the camera angle/framing (wide establishing shot, extreme close-up of a detail, low-angle, aerial, golden-hour, dramatic night lighting, etc.).
+    3. STATIC IMAGES ONLY: describe a still, high-quality scene. No motion verbs (no 'walking', 'waving', 'flowing').
+    4. People may appear ONLY if they are intrinsic to the subject (e.g., a crowd at a landmark), never as a narrating character.
+
+    CHARACTER DESCRIPTION FIELD:
+    1. Set 'character_description' to "N/A - voiceover narration, no character".
+`;
+
 /**
  * Generate a structured video script from a topic.
  * @param {string} topic - The user's topic / rough script.
  * @returns {Promise<{video_metrics: object, scenes: Array}>}
  * @throws {Error} if the API key is missing or generation fails.
  */
-export async function generateScript(topic) {
+export async function generateScript(topic, { narrator = false } = {}) {
     if (!topic || !topic.trim()) {
         throw new Error("Please provide a topic or rough script.");
     }
@@ -97,7 +114,7 @@ export async function generateScript(topic) {
         model: "gemini-2.5-flash",
         contents: prompt,
         config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
+            systemInstruction: narrator ? NARRATOR_SYSTEM_INSTRUCTION : CHARACTER_SYSTEM_INSTRUCTION,
             responseMimeType: "application/json",
             responseSchema: scriptSchema,
         }

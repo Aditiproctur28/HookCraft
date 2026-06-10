@@ -33,13 +33,12 @@ build/
 backend/temp_images/*
 backend/temp_audio/*
 backend/public/exports/*
-# Phase 2: per-job working folders
-backend/jobs/*
+# Phase 2: per-job runtime working folders ONLY (keep the source .js in backend/jobs/)
+backend/jobs/*/
 # Keep the folder skeletons in git, drop their contents
 !backend/temp_images/.gitkeep
 !backend/temp_audio/.gitkeep
 !backend/public/exports/.gitkeep
-!backend/jobs/.gitkeep
 
 # ── Remotion ───────────────────────────────────────────────
 .remotion/
