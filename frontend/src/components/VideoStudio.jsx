@@ -26,9 +26,50 @@ const ASPECTS = {
     '16:9': { label: 'Horizontal', sub: '16:9', icon: '🖥️', compW: 1920, compH: 1080, viewW: 512, viewH: 288 },
 };
 
+// Caption animation styles.
+const CAPTION_STYLES = {
+    word: { label: 'Word-by-Word', sub: 'Snappy pop-ins', icon: '✨' },
+    sentence: { label: 'Full Sentence', sub: 'Whole line per scene', icon: '📝' },
+};
+
+// Reusable two-card segmented toggle.
+function OptionGroup({ label, options, value, onChange, disabled }) {
+    return (
+        <div className="mt-5">
+            <label className="mb-2 block text-sm font-semibold text-slate-300">{label}</label>
+            <div className="grid grid-cols-2 gap-3">
+                {options.map((opt) => {
+                    const selected = value === opt.key;
+                    return (
+                        <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() => !disabled && onChange(opt.key)}
+                            disabled={disabled}
+                            className={[
+                                'flex items-center gap-3 rounded-2xl border p-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60',
+                                selected
+                                    ? 'border-brand-500 bg-brand-500/15 ring-2 ring-brand-500/30'
+                                    : 'border-hairline bg-surface-2 hover:border-slate-600',
+                            ].join(' ')}
+                        >
+                            <span className="text-2xl">{opt.icon}</span>
+                            <span>
+                                <span className="block text-sm font-semibold text-white">{opt.label}</span>
+                                <span className="block text-xs text-slate-400">{opt.sub}</span>
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 export default function VideoStudio() {
     const [topic, setTopic] = useState('');
     const [aspectRatio, setAspectRatio] = useState('9:16');
+    const [captionStyle, setCaptionStyle] = useState('word');
     const [job, setJob] = useState(null);
     const esRef = useRef(null);
 
@@ -47,7 +88,7 @@ export default function VideoStudio() {
             const res = await fetch(`${API_BASE}/api/video/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topic, aspectRatio }),
+                body: JSON.stringify({ topic, aspectRatio, captionStyle }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to start the pipeline.');
@@ -92,35 +133,21 @@ export default function VideoStudio() {
                 className="w-full resize-y rounded-2xl border border-hairline bg-surface-2 p-4 text-[15px] text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/40 disabled:opacity-60"
             />
 
-            {/* Aspect-ratio toggle */}
-            <div className="mt-5">
-                <label className="mb-2 block text-sm font-semibold text-slate-300">Format</label>
-                <div className="grid grid-cols-2 gap-3">
-                    {Object.entries(ASPECTS).map(([key, a]) => {
-                        const selected = aspectRatio === key;
-                        return (
-                            <button
-                                key={key}
-                                type="button"
-                                onClick={() => !isRunning && setAspectRatio(key)}
-                                disabled={isRunning}
-                                className={[
-                                    'flex items-center gap-3 rounded-2xl border p-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60',
-                                    selected
-                                        ? 'border-brand-500 bg-brand-500/15 ring-2 ring-brand-500/30'
-                                        : 'border-hairline bg-surface-2 hover:border-slate-600',
-                                ].join(' ')}
-                            >
-                                <span className="text-2xl">{a.icon}</span>
-                                <span>
-                                    <span className="block text-sm font-semibold text-white">{a.label}</span>
-                                    <span className="block text-xs text-slate-400">{a.sub}</span>
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
+            {/* Format + caption-style toggles */}
+            <OptionGroup
+                label="Format"
+                value={aspectRatio}
+                onChange={setAspectRatio}
+                disabled={isRunning}
+                options={Object.entries(ASPECTS).map(([key, a]) => ({ key, label: a.label, sub: a.sub, icon: a.icon }))}
+            />
+            <OptionGroup
+                label="Captions"
+                value={captionStyle}
+                onChange={setCaptionStyle}
+                disabled={isRunning}
+                options={Object.entries(CAPTION_STYLES).map(([key, c]) => ({ key, ...c }))}
+            />
 
             {/* Generate button */}
             <button
@@ -190,7 +217,7 @@ export default function VideoStudio() {
                     <div className="overflow-hidden rounded-[20px] border-2 border-brand-500/60 shadow-2xl shadow-brand-600/20">
                         <Player
                             component={MasterVideo}
-                            inputProps={{ scenes: job.scenes, width: previewAspect.compW, height: previewAspect.compH }}
+                            inputProps={{ scenes: job.scenes, width: previewAspect.compW, height: previewAspect.compH, captionStyle: job.captionStyle || captionStyle }}
                             durationInFrames={Math.max(job.totalDurationInFrames || 0, 150)}
                             fps={30}
                             compositionWidth={job.width || previewAspect.compW}

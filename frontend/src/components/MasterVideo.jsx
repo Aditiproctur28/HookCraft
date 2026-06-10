@@ -2,9 +2,9 @@ import React from 'react';
 import { Series, AbsoluteFill, Audio } from 'remotion'; // You can also import staticFile from 'remotion' later
 import { VideoComposition } from './VideoComposition';
 
-export const MasterVideo = ({ scenes }) => {
+export const MasterVideo = ({ scenes, captionStyle = 'word' }) => {
     if (!scenes || scenes.length === 0) {
-        return null; 
+        return null;
     }
 
     return (
@@ -31,10 +31,11 @@ export const MasterVideo = ({ scenes }) => {
                         key={index} 
                         durationInFrames={scene.durationInFrames}
                     >
-                        <VideoComposition 
+                        <VideoComposition
                             imageUrl={scene.imageUrl}
                             audioUrl={scene.audioUrl}
                             narrationText={scene.narrationText}
+                            captionStyle={captionStyle}
                         />
                     </Series.Sequence>
                 ))}

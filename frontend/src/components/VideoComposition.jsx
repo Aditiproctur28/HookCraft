@@ -2,7 +2,7 @@ import React from 'react';
 import { AbsoluteFill, Audio, Img, useCurrentFrame, useVideoConfig, interpolate } from 'remotion';
 import { DynamicCaptions } from './DynamicCaptions';
 
-export const VideoComposition = ({ imageUrl, audioUrl, narrationText }) => {
+export const VideoComposition = ({ imageUrl, audioUrl, narrationText, captionStyle = 'word' }) => {
     const frame = useCurrentFrame();
     const { durationInFrames, fps } = useVideoConfig();
 
@@ -31,9 +31,10 @@ export const VideoComposition = ({ imageUrl, audioUrl, narrationText }) => {
             </AbsoluteFill>
 
             {/* The Dynamic Text Overlay */}
-            <DynamicCaptions 
-                text={narrationText} 
-                audioDurationInSeconds={audioDurationInSeconds} 
+            <DynamicCaptions
+                text={narrationText}
+                audioDurationInSeconds={audioDurationInSeconds}
+                captionStyle={captionStyle}
             />
 
         </AbsoluteFill>

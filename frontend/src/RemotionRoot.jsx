@@ -15,6 +15,7 @@ export const RemotionVideo = () => {
                 scenes: [],
                 width: 1080,
                 height: 1920,
+                captionStyle: 'word',
             }}
             // Dynamically measure scene durations AND apply the aspect-ratio
             // dimensions passed from the backend (Phase 4).

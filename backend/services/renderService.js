@@ -27,11 +27,12 @@ async function getServeUrl() {
  * @param {function} [opts.onProgress]        - Optional (0..1) progress callback.
  * @returns {Promise<string>} the output file path.
  */
-export async function renderVideo({ scenes, totalDurationInFrames, width, height, outputLocation, onProgress }) {
+export async function renderVideo({ scenes, totalDurationInFrames, width, height, captionStyle, outputLocation, onProgress }) {
     const serveUrl = await getServeUrl();
 
-    // width/height flow into calculateMetadata, which sets the composition size.
-    const inputProps = { scenes, width, height };
+    // width/height flow into calculateMetadata (composition size); captionStyle
+    // flows to the caption renderer.
+    const inputProps = { scenes, width, height, captionStyle };
 
     const composition = await selectComposition({
         serveUrl,
