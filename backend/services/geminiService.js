@@ -17,6 +17,10 @@ const scriptSchema = {
             },
             required: ["estimated_duration_seconds"]
         },
+        character_description: {
+            type: "STRING",
+            description: "The visual anchor: a concise, purely physical description of the main character (age, gender, hair, build, clothing, colors) with NO background, NO camera framing, NO action. Used to render a standalone character concept portrait."
+        },
         scenes: {
             type: "ARRAY",
             items: {
@@ -40,7 +44,7 @@ const scriptSchema = {
             }
         }
     },
-    required: ["video_metrics", "scenes"]
+    required: ["video_metrics", "character_description", "scenes"]
 };
 
 const SYSTEM_INSTRUCTION = `
@@ -60,6 +64,9 @@ const SYSTEM_INSTRUCTION = `
 
     CRITICAL AUDIO RULES:
     1. For every scene block, you must assign the 'voice_type' string based on which character is speaking that specific line ('male' or 'female').
+
+    CHARACTER DESCRIPTION FIELD:
+    1. Output a 'character_description' that is the EXACT same visual anchor you embed in the scenes, but stripped down to ONLY the physical appearance (age, gender, hair, build, clothing, colors). No environment, no camera framing, no actions. This is used to render a clean standalone portrait of the actor.
 `;
 
 /**
