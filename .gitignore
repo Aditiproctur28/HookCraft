@@ -1,19 +1,73 @@
-# Dependencies
-node_modules/
-**/node_modules/
+# ───────────────────────────────────────────────────────────
+#  HookCraft .gitignore  (root)
+#  Covers: Node, Python (lip-sync env), Remotion, generated
+#  runtime buffers, secrets, OS/editor noise.
+# ───────────────────────────────────────────────────────────
 
-# Logs
-*.log
-
-# Environment variables
+# ── Secrets / credentials ──────────────────────────────────
 .env
 .env.*
+!.env.example
+*.pem
+*.key
+secrets.json
 
-# Build folders
+# ── Node ───────────────────────────────────────────────────
+node_modules/
+**/node_modules/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Build / bundler output ─────────────────────────────────
 dist/
+dist-ssr/
 build/
 .next/
+*.local
 
-# OS files
+# ── Generated runtime buffers (NEVER commit) ───────────────
+# Per-scene AI assets and rendered videos are regenerated on demand.
+backend/temp_images/*
+backend/temp_audio/*
+backend/public/exports/*
+# Phase 2: per-job working folders
+backend/jobs/*
+# Keep the folder skeletons in git, drop their contents
+!backend/temp_images/.gitkeep
+!backend/temp_audio/.gitkeep
+!backend/public/exports/.gitkeep
+!backend/jobs/.gitkeep
+
+# ── Remotion ───────────────────────────────────────────────
+.remotion/
+out/
+
+# ── Python (lip-sync / forced-alignment env) ───────────────
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+# Model weights — large, downloaded on setup, never committed
+*.pth
+*.pt
+*.ckpt
+*.onnx
+*.safetensors
+checkpoints/
+models/weights/
+
+# ── OS / editor ────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.swp
