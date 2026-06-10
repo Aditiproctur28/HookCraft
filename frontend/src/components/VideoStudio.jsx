@@ -3,7 +3,13 @@ import { Player } from '@remotion/player';
 import { MasterVideo } from './MasterVideo';
 import { API_BASE } from '../config';
 
-// Maps backend stages → a short status label shown on the button.
+// Ordered pipeline stages for the stepper + their button labels.
+const STAGES = [
+    { key: 'script', label: 'Script', icon: '✍️' },
+    { key: 'artwork', label: 'Artwork', icon: '🎨' },
+    { key: 'voiceover', label: 'Voiceover', icon: '🎙️' },
+    { key: 'render', label: 'Render', icon: '🎬' },
+];
 const STAGE_LABEL = {
     queued: 'Starting…',
     script: 'Generating Script…',
@@ -16,20 +22,17 @@ const STAGE_LABEL = {
 
 export default function VideoStudio() {
     const [topic, setTopic] = useState('');
-    const [job, setJob] = useState(null); // { status, stage, message, pct, scenes, totalDurationInFrames, downloadUrl, error }
+    const [job, setJob] = useState(null);
     const esRef = useRef(null);
 
     const isRunning = job && (job.status === 'pending' || job.status === 'running');
     const isDone = job && job.status === 'done';
     const isError = job && job.status === 'error';
 
-    // Clean up any open SSE connection on unmount.
     useEffect(() => () => esRef.current?.close(), []);
 
     const handleGenerate = async () => {
         if (!topic.trim() || isRunning) return;
-
-        // Reset and optimistically show the queued state.
         setJob({ status: 'pending', stage: 'queued', message: 'Starting…', pct: 0 });
         esRef.current?.close();
 
@@ -42,19 +45,14 @@ export default function VideoStudio() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to start the pipeline.');
 
-            // Subscribe to the live progress stream.
             const es = new EventSource(`${API_BASE}/api/video/progress/${data.jobId}`);
             esRef.current = es;
-
             es.onmessage = (event) => {
                 const update = JSON.parse(event.data);
                 setJob(update);
-                if (update.status === 'done' || update.status === 'error') {
-                    es.close();
-                }
+                if (update.status === 'done' || update.status === 'error') es.close();
             };
             es.onerror = () => {
-                // Network drop / server closed unexpectedly.
                 es.close();
                 setJob((prev) => prev?.status === 'done'
                     ? prev
@@ -65,79 +63,98 @@ export default function VideoStudio() {
         }
     };
 
+    const currentStageIndex = job ? STAGES.findIndex((s) => s.key === job.stage) : -1;
     const buttonLabel = isRunning
         ? (STAGE_LABEL[job.stage] || job.message || 'Working…')
-        : (isDone ? '🔁 Generate Another' : '🚀 Generate Video');
-
-    const totalDuration = job?.totalDurationInFrames || 0;
+        : (isDone ? 'Generate Another' : 'Generate Video');
 
     return (
-        <div style={{ maxWidth: '640px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+        <div className="rounded-3xl border border-hairline bg-surface/80 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-8">
             {/* Topic input */}
+            <label className="mb-2 block text-sm font-semibold text-slate-300">Your idea</label>
             <textarea
-                rows="4"
+                rows={4}
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 disabled={isRunning}
-                placeholder="e.g., A single man explains why active listening wins trust, fast-paced vertical short…"
-                style={{
-                    width: '100%', padding: '14px', borderRadius: '10px',
-                    border: '1px solid #d1d5db', fontSize: '16px', resize: 'vertical',
-                    boxSizing: 'border-box', fontFamily: 'inherit',
-                }}
+                placeholder="e.g., A single man explains why active listening wins trust — fast-paced vertical short…"
+                className="w-full resize-y rounded-2xl border border-hairline bg-surface-2 p-4 text-[15px] text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/40 disabled:opacity-60"
             />
 
-            {/* The single Generate button */}
+            {/* Generate button */}
             <button
                 onClick={handleGenerate}
                 disabled={isRunning || !topic.trim()}
-                style={{
-                    marginTop: '14px', width: '100%', padding: '16px',
-                    backgroundColor: isRunning ? '#6366f1' : (!topic.trim() ? '#9ca3af' : '#4f46e5'),
-                    color: 'white', border: 'none', borderRadius: '12px',
-                    fontSize: '18px', fontWeight: 'bold',
-                    cursor: isRunning || !topic.trim() ? 'not-allowed' : 'pointer',
-                    transition: 'background-color 0.2s',
-                }}
+                className="group mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 to-violet-500 px-6 py-4 text-lg font-bold text-white shadow-lg shadow-brand-600/30 transition hover:shadow-xl hover:shadow-brand-600/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
             >
-                {isRunning && '⚙️ '}{buttonLabel}
+                {isRunning && (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                )}
+                {!isRunning && <span>{isDone ? '🔁' : '🚀'}</span>}
+                {buttonLabel}
             </button>
+
+            {/* Stage stepper (visible once a run starts) */}
+            {job && (
+                <div className="mt-7 flex items-center justify-between gap-1">
+                    {STAGES.map((stage, i) => {
+                        const done = isDone || (currentStageIndex > i) || (job.stage === 'done');
+                        const active = currentStageIndex === i && !isDone;
+                        return (
+                            <React.Fragment key={stage.key}>
+                                <div className="flex flex-1 flex-col items-center gap-1.5">
+                                    <div className={[
+                                        'grid h-10 w-10 place-items-center rounded-full border text-base transition',
+                                        done ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                                            : active ? 'border-brand-500 bg-brand-500/20 text-white ring-4 ring-brand-500/20'
+                                            : 'border-hairline bg-surface-2 text-slate-500',
+                                    ].join(' ')}>
+                                        {done ? '✓' : stage.icon}
+                                    </div>
+                                    <span className={[
+                                        'text-[11px] font-medium',
+                                        active ? 'text-white' : done ? 'text-emerald-300' : 'text-slate-500',
+                                    ].join(' ')}>{stage.label}</span>
+                                </div>
+                                {i < STAGES.length - 1 && (
+                                    <div className={`h-px flex-1 ${currentStageIndex > i || isDone ? 'bg-emerald-500/40' : 'bg-hairline'}`} />
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* Progress bar + live message */}
             {job && !isDone && (
-                <div style={{ marginTop: '18px' }}>
-                    <div style={{ height: '10px', backgroundColor: '#e5e7eb', borderRadius: '999px', overflow: 'hidden' }}>
-                        <div style={{
-                            height: '100%', width: `${job.pct || 0}%`,
-                            backgroundColor: isError ? '#ef4444' : '#4f46e5',
-                            transition: 'width 0.4s ease',
-                        }} />
+                <div className="mt-6">
+                    <div className="h-2 overflow-hidden rounded-full bg-surface-2">
+                        <div
+                            className={`h-full rounded-full transition-[width] duration-500 ${isError ? 'bg-red-500' : 'bg-gradient-to-r from-brand-500 to-violet-500'}`}
+                            style={{ width: `${job.pct || 0}%` }}
+                        />
                     </div>
-                    <p style={{
-                        marginTop: '10px', textAlign: 'center', fontSize: '14px',
-                        color: isError ? '#dc2626' : '#6b7280', fontWeight: 500,
-                    }}>
-                        {isError ? `❌ ${job.message}` : job.message}
+                    <p className={`mt-3 text-center text-sm font-medium ${isError ? 'text-red-400' : 'text-slate-400'}`}>
+                        {isError ? `⚠️ ${job.message}` : job.message}
                     </p>
                 </div>
             )}
 
             {/* Preview + download */}
             {isDone && job.scenes?.length > 0 && (
-                <div style={{
-                    marginTop: '28px', padding: '24px', backgroundColor: '#111827',
-                    borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center',
-                }}>
-                    <h3 style={{ color: 'white', marginTop: 0, marginBottom: '18px' }}>✅ Your Video is Ready</h3>
-                    <div style={{ borderRadius: '12px', overflow: 'hidden', border: '2px solid #4f46e5' }}>
+                <div className="mt-8 flex flex-col items-center rounded-2xl border border-hairline bg-canvas/60 p-6">
+                    <h3 className="mb-5 flex items-center gap-2 text-lg font-bold text-white">
+                        <span className="text-emerald-400">✅</span> Your video is ready
+                    </h3>
+                    <div className="overflow-hidden rounded-[20px] border-2 border-brand-500/60 shadow-2xl shadow-brand-600/20">
                         <Player
                             component={MasterVideo}
                             inputProps={{ scenes: job.scenes }}
-                            durationInFrames={Math.max(totalDuration, 150)}
+                            durationInFrames={Math.max(job.totalDurationInFrames || 0, 150)}
                             fps={30}
                             compositionWidth={1080}
                             compositionHeight={1920}
-                            style={{ width: '280px', height: '498px' }}
+                            style={{ width: '288px', height: '512px' }}
                             controls
                             autoPlay
                         />
@@ -146,11 +163,7 @@ export default function VideoStudio() {
                         <a
                             href={job.downloadUrl}
                             download
-                            style={{
-                                marginTop: '20px', display: 'inline-block', backgroundColor: '#10b981',
-                                color: 'white', padding: '14px 28px', borderRadius: '999px',
-                                textDecoration: 'none', fontWeight: 'bold', fontSize: '17px',
-                            }}
+                            className="mt-6 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-7 py-3.5 text-[15px] font-bold text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400"
                         >
                             ⬇️ Download Final .MP4
                         </a>
