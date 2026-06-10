@@ -5,9 +5,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Route imports
-import scriptRoutes from './routes/scriptRoutes.js'; 
-import audioRoutes from './routes/audioRoutes.js'; 
+import scriptRoutes from './routes/scriptRoutes.js';
+import audioRoutes from './routes/audioRoutes.js';
 import imageRoutes from './routes/imageRoutes.js';
+import videoRoutes from './routes/videoRoutes.js'; // Phase 2: silent pipeline + SSE
 import { renderVideo } from './controllers/exportController.js'; // NEW IMPORT
 
 // Load environment variables (.env)
@@ -27,12 +28,16 @@ app.use(express.json());
 app.use('/temp_audio', express.static(path.join(__dirname, 'temp_audio')));
 app.use('/temp_images', express.static(path.join(__dirname, 'temp_images')));
 // NEW: Serve the exports folder so the frontend can download the MP4
-app.use('/exports', express.static(path.join(__dirname, 'public/exports'))); 
+app.use('/exports', express.static(path.join(__dirname, 'public/exports')));
+// Phase 2: serve per-job assets (images, audio, final MP4) for preview + render
+app.use('/jobs', express.static(path.join(__dirname, 'jobs')));
 
 // Routes
 app.use('/api/scripts', scriptRoutes);
 app.use('/api/audio', audioRoutes);
 app.use('/api/images', imageRoutes);
+// Phase 2: single-button orchestrated pipeline
+app.use('/api/video', videoRoutes);
 // NEW: The MP4 Export Route
 app.post('/api/export', renderVideo);
 
