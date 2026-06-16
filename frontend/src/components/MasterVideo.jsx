@@ -73,6 +73,7 @@ export const MasterVideo = ({ scenes, captionStyle = 'word' }) => {
                         text={scene.narrationText}
                         audioDurationInSeconds={(scene.durationInFrames - 15) / fps}
                         captionStyle={captionStyle}
+                        wordTimings={scene.wordTimings}
                     />
                 </Sequence>
             ))}

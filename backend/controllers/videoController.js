@@ -7,13 +7,13 @@ import { runPreparation, regenerateCharacter, runProduction } from '../jobs/pipe
  * The pipeline pauses at `awaiting_approval` for the character step.
  */
 export const startVideo = (req, res) => {
-    const { topic, aspectRatio, imageMode, captionStyle, scriptMode } = req.body;
+    const { topic, aspectRatio, imageMode, captionStyle, scriptMode, language } = req.body;
     if (!topic || !topic.trim()) {
         return res.status(400).json({ error: 'Please provide a topic.' });
     }
 
     const job = createJob();
-    runPreparation(job, { topic, aspectRatio, imageMode, captionStyle, scriptMode });
+    runPreparation(job, { topic, aspectRatio, imageMode, captionStyle, scriptMode, language });
 
     return res.status(202).json({ jobId: job.id });
 };

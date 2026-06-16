@@ -38,6 +38,13 @@ const SCRIPT_MODES = {
     auto: { label: 'Auto-Generate', sub: 'AI writes the script', icon: '🤖' },
     verbatim: { label: 'Use My Words', sub: 'Speak my script exactly', icon: '📄' },
 };
+const LANGUAGES = {
+    en: { label: 'English', sub: 'US neural voice', icon: '🇺🇸' },
+    hi: { label: 'Hindi', sub: 'हिंदी आवाज़', icon: '🇮🇳' },
+};
+
+// Persisted so an in-progress (or finished) job survives a page reload.
+const JOB_KEY = 'hookcraft.activeJobId';
 
 // Reusable segmented toggle. cols=2 → horizontal cards; cols>=3 → compact centered cards.
 function OptionGroup({ label, options, value, onChange, disabled, cols = 2 }) {
@@ -81,6 +88,7 @@ export default function VideoStudio() {
     const [captionStyle, setCaptionStyle] = useState('word');
     const [imageMode, setImageMode] = useState('dynamic');
     const [scriptMode, setScriptMode] = useState('auto');
+    const [language, setLanguage] = useState('en');
     const [job, setJob] = useState(null);
     const esRef = useRef(null);
 
@@ -91,7 +99,41 @@ export default function VideoStudio() {
     const isError = status === 'error';
     const isBusy = isRunning || isAwaiting;
 
-    useEffect(() => () => esRef.current?.close(), []);
+    // Subscribe to a job's progress stream. `isRestore` distinguishes a reload
+    // reconnect (where a vanished job means "start fresh") from a live run.
+    const subscribe = (jobId, { isRestore = false } = {}) => {
+        esRef.current?.close();
+        const es = new EventSource(`${API_BASE}/api/video/progress/${jobId}`);
+        esRef.current = es;
+        let gotMessage = false;
+        es.onmessage = (event) => {
+            gotMessage = true;
+            const update = JSON.parse(event.data);
+            setJob(update);
+            if (update.status === 'done' || update.status === 'error') es.close();
+        };
+        es.onerror = () => {
+            es.close();
+            // On reload, a job the server no longer knows about (e.g. it restarted)
+            // shouldn't show a scary error — just clear it and reset the form.
+            if (isRestore && !gotMessage) {
+                localStorage.removeItem(JOB_KEY);
+                setJob(null);
+                return;
+            }
+            setJob((prev) => prev?.status === 'done'
+                ? prev
+                : { ...(prev || {}), status: 'error', stage: 'error', message: 'Connection to the server was lost.' });
+        };
+    };
+
+    // Reconnect to a persisted job on mount so a reload doesn't wipe progress.
+    useEffect(() => {
+        const savedId = localStorage.getItem(JOB_KEY);
+        if (savedId) subscribe(savedId, { isRestore: true });
+        return () => esRef.current?.close();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleGenerate = async () => {
         if (!topic.trim() || isBusy) return;
@@ -102,24 +144,13 @@ export default function VideoStudio() {
             const res = await fetch(`${API_BASE}/api/video/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topic, aspectRatio, captionStyle, imageMode, scriptMode }),
+                body: JSON.stringify({ topic, aspectRatio, captionStyle, imageMode, scriptMode, language }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to start the pipeline.');
 
-            const es = new EventSource(`${API_BASE}/api/video/progress/${data.jobId}`);
-            esRef.current = es;
-            es.onmessage = (event) => {
-                const update = JSON.parse(event.data);
-                setJob(update);
-                if (update.status === 'done' || update.status === 'error') es.close();
-            };
-            es.onerror = () => {
-                es.close();
-                setJob((prev) => prev?.status === 'done'
-                    ? prev
-                    : { ...(prev || {}), status: 'error', stage: 'error', message: 'Connection to the server was lost.' });
-            };
+            localStorage.setItem(JOB_KEY, data.jobId);
+            subscribe(data.jobId);
         } catch (err) {
             setJob({ status: 'error', stage: 'error', message: err.message });
         }
@@ -166,6 +197,8 @@ export default function VideoStudio() {
             {/* Settings */}
             <OptionGroup label="Script" value={scriptMode} onChange={setScriptMode} disabled={isBusy}
                 options={Object.entries(SCRIPT_MODES).map(([key, s]) => ({ key, ...s }))} />
+            <OptionGroup label="Language" value={language} onChange={setLanguage} disabled={isBusy}
+                options={Object.entries(LANGUAGES).map(([key, l]) => ({ key, ...l }))} />
             <OptionGroup label="Format" value={aspectRatio} onChange={setAspectRatio} disabled={isBusy}
                 options={Object.entries(ASPECTS).map(([key, a]) => ({ key, label: a.label, sub: a.sub, icon: a.icon }))} />
             <OptionGroup label="Captions" value={captionStyle} onChange={setCaptionStyle} disabled={isBusy}

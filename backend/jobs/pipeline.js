@@ -28,12 +28,13 @@ function characterPrompt(description) {
  * Phase A — preparation: generate script + a character concept, then PAUSE
  * for user approval. Fire-and-forget; never throws.
  */
-export async function runPreparation(job, { topic, aspectRatio, imageMode, captionStyle, scriptMode }) {
+export async function runPreparation(job, { topic, aspectRatio, imageMode, captionStyle, scriptMode, language }) {
     const imagesDir = path.join(jobDirFor(job.id), 'images');
     const { fluxWidth, fluxHeight } = resolveDimensions(aspectRatio);
     const resolvedImageMode = ['static', 'narrator'].includes(imageMode) ? imageMode : 'dynamic';
     const isNarrator = resolvedImageMode === 'narrator';
     const verbatim = scriptMode === 'verbatim';
+    const resolvedLanguage = language === 'hi' ? 'hi' : 'en';
 
     try {
         // Stash inputs for the production phase.
@@ -41,11 +42,12 @@ export async function runPreparation(job, { topic, aspectRatio, imageMode, capti
             status: 'running', stage: 'script', message: 'Generating script…', pct: 15,
             _topic: topic,
             _aspectRatio: aspectRatio,
+            _language: resolvedLanguage,
             imageMode: resolvedImageMode,
             captionStyle: captionStyle === 'sentence' ? 'sentence' : 'word',
         });
 
-        const script = await generateScript(topic, { narrator: isNarrator, verbatim });
+        const script = await generateScript(topic, { narrator: isNarrator, verbatim, language: resolvedLanguage });
         if (!script.scenes || script.scenes.length === 0) throw new Error('The script came back with no scenes.');
 
         updateJob(job.id, { _scriptData: script });
@@ -125,11 +127,27 @@ export async function runProduction(job) {
     const isStatic = job.imageMode === 'static';
     const scenes = job._scriptData.scenes;
     const total = scenes.length;
-    const characterUrl = `${PUBLIC_BASE}/jobs/${job.id}/images/character.jpeg`;
 
     try {
         updateJob(job.id, { status: 'running', stage: 'artwork', message: 'Preparing scenes…', pct: 62 });
         const enriched = [];
+
+        // Static mode: render ONE establishing scene (character inside the
+        // environment, from scene 1's visual prompt + approved seed) and reuse
+        // it as the continuous backdrop — not the clean-studio approval portrait.
+        let staticImageUrl = null;
+        if (isStatic) {
+            updateJob(job.id, { stage: 'artwork', message: 'Creating scene backdrop…', pct: 64 });
+            const img = await generateSceneImage({
+                visualPrompt: scenes[0].visual_prompt,
+                outDir: imagesDir,
+                width: fluxWidth,
+                height: fluxHeight,
+                seed,
+                fileName: 'scene_static.jpeg',
+            });
+            staticImageUrl = `${PUBLIC_BASE}/jobs/${job.id}/images/${img.fileName}`;
+        }
 
         for (let i = 0; i < total; i++) {
             const scene = scenes[i];
@@ -137,9 +155,9 @@ export async function runProduction(job) {
             let imageUrl;
 
             if (isStatic) {
-                // One locked character image as the continuous backdrop.
-                updateJob(job.id, { stage: 'artwork', message: `Applying character (${i + 1}/${total})…`, pct: 62 + Math.round((i / total) * 8) });
-                imageUrl = characterUrl;
+                // One locked establishing image as the continuous backdrop.
+                updateJob(job.id, { stage: 'artwork', message: `Applying backdrop (${i + 1}/${total})…`, pct: 62 + Math.round((i / total) * 8) });
+                imageUrl = staticImageUrl;
             } else {
                 // Distinct scene art, kept consistent via the locked seed + anchor.
                 updateJob(job.id, { stage: 'artwork', message: `Creating AI artwork (${i + 1}/${total})…`, pct: 62 + Math.round((i / total) * 23) });
@@ -159,6 +177,7 @@ export async function runProduction(job) {
                 sceneNumber: n,
                 narrationText: scene.narration_text,
                 voiceType: scene.voice_type,
+                language: job._language,
                 outDir: audioDir,
             });
 
@@ -168,6 +187,7 @@ export async function runProduction(job) {
                 audioUrl: `${PUBLIC_BASE}/jobs/${job.id}/audio/${aud.fileName}`,
                 narrationText: scene.narration_text,
                 durationInFrames: aud.durationInFrames,
+                wordTimings: aud.wordTimings,
             });
         }
 
