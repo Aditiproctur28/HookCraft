@@ -5,7 +5,10 @@ import fs from "fs";
 
 const FPS = 30;
 const PLAYBACK_RATE = 1.2;   // audio is sped up 20% at render time
-const TAIL_BUFFER_FRAMES = 15; // safety pad so captions finish with the audio
+// Small pad after each scene's audio so captions finish cleanly. Kept short on
+// purpose: this is dead silence between lines, so a large value reads as a pause
+// after every sentence. MUST stay in sync with the matching value in MasterVideo.jsx.
+const TAIL_BUFFER_FRAMES = 3; // ~0.1s breath between lines (was 15 → 0.5s, too long)
 
 /**
  * Generate a scene voiceover MP3 and measure its rendered duration in frames.
@@ -22,11 +25,16 @@ const TAIL_BUFFER_FRAMES = 15; // safety pad so captions finish with the audio
 // shifting pitch/rate of a base voice via SSML prosody. `base` is per-language;
 // `pitch` is per-language (Hindi has no child voice, so it needs more lift).
 const VOICE_PRESETS = {
-    male:    { base: { en: "en-US-GuyNeural",   hi: "hi-IN-MadhurNeural" }, pitch: { en: "+0%",  hi: "+0%"  }, rate: 1.0 },
-    female:  { base: { en: "en-US-JennyNeural", hi: "hi-IN-SwaraNeural"  }, pitch: { en: "+0%",  hi: "+0%"  }, rate: 1.0 },
-    girl:    { base: { en: "en-US-AnaNeural",   hi: "hi-IN-SwaraNeural"  }, pitch: { en: "+0%",  hi: "+30%" }, rate: 1.0 },
-    boy:     { base: { en: "en-US-AnaNeural",   hi: "hi-IN-MadhurNeural" }, pitch: { en: "-12%", hi: "+38%" }, rate: 1.0 },
-    cartoon: { base: { en: "en-US-JennyNeural", hi: "hi-IN-SwaraNeural"  }, pitch: { en: "+45%", hi: "+45%" }, rate: "+8%" },
+    // rate is an SSML speaking-rate bump (faster speech, SAME pitch — unlike
+    // PLAYBACK_RATE, which resamples and would raise pitch). Per-language because
+    // Hindi (Madhur/Swara) reads more slowly than the English voices, so it needs
+    // a bigger push to match the same on-screen energy. Note: the final video also
+    // applies PLAYBACK_RATE (1.2×) on top of these at render time.
+    male:    { base: { en: "en-US-GuyNeural",   hi: "hi-IN-MadhurNeural" }, pitch: { en: "+0%",  hi: "+0%"  }, rate: { en: "+10%", hi: "+20%" } },
+    female:  { base: { en: "en-US-JennyNeural", hi: "hi-IN-SwaraNeural"  }, pitch: { en: "+0%",  hi: "+0%"  }, rate: { en: "+10%", hi: "+20%" } },
+    girl:    { base: { en: "en-US-AnaNeural",   hi: "hi-IN-SwaraNeural"  }, pitch: { en: "+0%",  hi: "+30%" }, rate: { en: "+10%", hi: "+20%" } },
+    boy:     { base: { en: "en-US-AnaNeural",   hi: "hi-IN-MadhurNeural" }, pitch: { en: "-12%", hi: "+38%" }, rate: { en: "+10%", hi: "+20%" } },
+    cartoon: { base: { en: "en-US-JennyNeural", hi: "hi-IN-SwaraNeural"  }, pitch: { en: "+45%", hi: "+45%" }, rate: { en: "+13%", hi: "+23%" } },
 };
 
 // Map Gemini's (possibly loose) voice label onto a preset key. Order matters:
@@ -52,7 +60,7 @@ export async function generateSceneAudio({ sceneNumber, narrationText, voiceType
     const langKey = ["en", "hi"].includes(String(language || "").toLowerCase()) ? String(language).toLowerCase() : "en";
     const preset = VOICE_PRESETS[resolvePreset(voiceType)];
     const selectedVoiceModel = preset.base[langKey] || preset.base.en;
-    const prosody = { pitch: preset.pitch[langKey] ?? "+0%", rate: preset.rate ?? 1.0 };
+    const prosody = { pitch: preset.pitch[langKey] ?? "+0%", rate: preset.rate[langKey] ?? "+0%" };
 
     const tts = new MsEdgeTTS();
     // wordBoundaryEnabled → Edge emits a per-word timestamp stream we use to sync captions.

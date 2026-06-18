@@ -71,7 +71,7 @@ export const MasterVideo = ({ scenes, captionStyle = 'word' }) => {
                 <Sequence key={`cap-${i}`} from={scene.start} durationInFrames={scene.durationInFrames}>
                     <DynamicCaptions
                         text={scene.narrationText}
-                        audioDurationInSeconds={(scene.durationInFrames - 15) / fps}
+                        audioDurationInSeconds={(scene.durationInFrames - 3) / fps}
                         captionStyle={captionStyle}
                         wordTimings={scene.wordTimings}
                     />

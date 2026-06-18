@@ -43,6 +43,8 @@ backend/jobs/*/
 # ── Remotion ───────────────────────────────────────────────
 .remotion/
 out/
+# Redirected OS temp for renders (frame dumps) — see renderService.js
+.render-temp/
 
 # ── Python (lip-sync / forced-alignment env) ───────────────
 venv/

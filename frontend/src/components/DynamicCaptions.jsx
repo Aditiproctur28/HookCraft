@@ -37,13 +37,18 @@ const HINDI_TEXT = {
   textTransform: 'none',
   lineHeight: '1.9',
 };
+// paintOrder: 'stroke' draws the outline FIRST, then the fill on top — so the
+// stroke only grows outward and never eats into the letterforms (the default
+// centered stroke is what made the insides of letters look crumbled).
 const LATIN_SHADOW = {
   textShadow: '4px 4px 0px #000000, -2px -2px 0px #000000, 2px -2px 0px #000000, -2px 2px 0px #000000, 2px 2px 0px #000000',
   WebkitTextStroke: '2px black',
+  paintOrder: 'stroke',
 };
 const HINDI_SHADOW = {
   textShadow: '3px 3px 4px #000000, 0 0 6px #000000',
   WebkitTextStroke: '1px black',
+  paintOrder: 'stroke',
 };
 
 // Pick legibility treatment from the text itself, so we don't have to thread the

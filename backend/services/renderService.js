@@ -7,6 +7,18 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Remotion bundles and dumps every rendered frame through the OS temp dir
+// (os.tmpdir() -> TEMP/TMP on Windows). On this box that defaults to the C:
+// drive, which is chronically near-full and causes mid-render ENOSPC crashes.
+// Redirect temp to a dedicated folder on the same (roomier) drive as the repo,
+// overridable via REMOTION_TEMP_DIR for other environments.
+const tmpDir = process.env.REMOTION_TEMP_DIR
+    || path.resolve(__dirname, '../../.render-temp');
+fs.mkdirSync(tmpDir, { recursive: true });
+process.env.TMPDIR = tmpDir;
+process.env.TEMP = tmpDir;
+process.env.TMP = tmpDir;
+
 // Bundling is expensive; cache the serve URL across renders in this process.
 let cachedServeUrl = null;
 
