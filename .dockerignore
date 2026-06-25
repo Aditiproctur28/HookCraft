@@ -1,0 +1,27 @@
+# Keep the build context small & secret-free.
+# node_modules are reinstalled inside the image; .env is injected at runtime.
+
+**/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+
+# Build / runtime output that should never go into the image
+frontend/dist
+backend/public/exports
+backend/jobs
+backend/temp_audio
+backend/temp_images
+.render-temp
+
+# Generated media + recordings sitting in the repo
+*.mp4
+
+# VCS / editor / OS noise
+.git
+.gitignore
+**/*.log
+.vscode
+.idea
+.DS_Store
+Thumbs.db
