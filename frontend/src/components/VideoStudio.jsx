@@ -45,6 +45,26 @@ const LANGUAGES = {
 
 // Persisted so an in-progress (or finished) job survives a page reload.
 const JOB_KEY = 'hookcraft.activeJobId';
+// Persisted so the topic + chosen settings survive a page reload too.
+const FORM_KEY = 'hookcraft.form';
+
+const FORM_DEFAULTS = {
+    topic: '',
+    aspectRatio: '9:16',
+    captionStyle: 'word',
+    imageMode: 'dynamic',
+    scriptMode: 'auto',
+    language: 'en',
+};
+
+function loadForm() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(FORM_KEY));
+        return saved ? { ...FORM_DEFAULTS, ...saved } : FORM_DEFAULTS;
+    } catch {
+        return FORM_DEFAULTS;
+    }
+}
 
 // Reusable segmented toggle. cols=2 → horizontal cards; cols>=3 → compact centered cards.
 function OptionGroup({ label, options, value, onChange, disabled, cols = 2 }) {
@@ -83,14 +103,22 @@ function OptionGroup({ label, options, value, onChange, disabled, cols = 2 }) {
 }
 
 export default function VideoStudio() {
-    const [topic, setTopic] = useState('');
-    const [aspectRatio, setAspectRatio] = useState('9:16');
-    const [captionStyle, setCaptionStyle] = useState('word');
-    const [imageMode, setImageMode] = useState('dynamic');
-    const [scriptMode, setScriptMode] = useState('auto');
-    const [language, setLanguage] = useState('en');
+    const [initial] = useState(loadForm);
+    const [topic, setTopic] = useState(initial.topic);
+    const [aspectRatio, setAspectRatio] = useState(initial.aspectRatio);
+    const [captionStyle, setCaptionStyle] = useState(initial.captionStyle);
+    const [imageMode, setImageMode] = useState(initial.imageMode);
+    const [scriptMode, setScriptMode] = useState(initial.scriptMode);
+    const [language, setLanguage] = useState(initial.language);
     const [job, setJob] = useState(null);
     const esRef = useRef(null);
+
+    // Persist the topic + settings so they survive a page reload.
+    useEffect(() => {
+        localStorage.setItem(FORM_KEY, JSON.stringify({
+            topic, aspectRatio, captionStyle, imageMode, scriptMode, language,
+        }));
+    }, [topic, aspectRatio, captionStyle, imageMode, scriptMode, language]);
 
     const status = job?.status;
     const isAwaiting = status === 'awaiting_approval';

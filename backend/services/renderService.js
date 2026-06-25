@@ -69,3 +69,46 @@ export async function renderVideo({ scenes, totalDurationInFrames, width, height
 
     return outputLocation;
 }
+
+// Decoding video clips frame-by-frame is far more memory-hungry than the still
+// pipeline. Remotion decodes many frames in parallel by default, which OOM'd
+// Chrome on this low-headroom box (16GB RAM + a chronically-full C: drive whose
+// pagefile can't grow). Default to SINGLE-threaded rendering for safety; bump
+// ANIMATION_RENDER_CONCURRENCY on a machine with more RAM + free disk.
+const ANIM_CONCURRENCY = Number(process.env.ANIMATION_RENDER_CONCURRENCY || 1);
+const ANIM_VIDEO_CACHE_BYTES = Number(process.env.ANIMATION_VIDEO_CACHE_MB || 128) * 1024 * 1024;
+
+/**
+ * Render the AnimatedVideo composition (AI motion clips) to an MP4.
+ * Mirrors renderVideo but targets the 'AnimatedVideo' composition; scenes carry
+ * clipUrl + clipDurationSec instead of a still imageUrl.
+ */
+export async function renderAnimatedVideo({ scenes, totalDurationInFrames, width, height, captionStyle, outputLocation, onProgress }) {
+    const serveUrl = await getServeUrl();
+    const inputProps = { scenes, width, height, captionStyle };
+
+    const composition = await selectComposition({
+        serveUrl,
+        id: 'AnimatedVideo',
+        inputProps,
+    });
+
+    const exportDir = path.dirname(outputLocation);
+    if (!fs.existsSync(exportDir)) {
+        fs.mkdirSync(exportDir, { recursive: true });
+    }
+
+    await renderMedia({
+        composition,
+        serveUrl,
+        codec: 'h264',
+        outputLocation,
+        inputProps,
+        durationInFrames: totalDurationInFrames || composition.durationInFrames,
+        concurrency: ANIM_CONCURRENCY,
+        offthreadVideoCacheSizeInBytes: ANIM_VIDEO_CACHE_BYTES,
+        onProgress: onProgress ? ({ progress }) => onProgress(progress) : undefined,
+    });
+
+    return outputLocation;
+}

@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
-import { withRetry } from './retry.js';
+import { withRetry, isTransient } from './retry.js';
 
 dotenv.config();
 
@@ -101,6 +101,17 @@ const HINDI_CLAUSE = `
     3. Keep 'visual_prompt' and 'character_description' in ENGLISH — the image generator needs English prompts.
 `;
 
+// Appended in ANIMATION mode: each scene also needs a motion description that
+// drives the image-to-video step (what moves, how the camera moves).
+const ANIMATION_CLAUSE = `
+    ANIMATION MODE (IMAGE-TO-VIDEO):
+    This script will be ANIMATED — each scene's still image is turned into a short moving clip.
+    1. For EVERY scene, also output a 'motion_prompt': a short, concrete description of the MOTION in that shot — what the subject/character does and how the camera moves (e.g. "the cat walks forward through the meadow, gentle camera push-in, tail swaying"). Keep it to one sentence, describe SMOOTH, subtle motion (a single clear action + one camera move), and keep it consistent with the scene's visual_prompt.
+    2. Prefer simple, natural movements that look good in a ~3-second clip. Avoid complex multi-step actions, fast cuts, or motions that would distort the character.
+    3. Keep the SAME character appearance across scenes (same species, colors, clothing) so the animation stays consistent — repeat the character's physical description in every visual_prompt.
+    4. THE MAIN CHARACTER MUST BE CLEARLY PRESENT AND PROMINENT IN EVERY SINGLE SCENE'S visual_prompt — it should fill a good part of the frame. NEVER write an empty scene of only water, sky, ripples, scenery, or a lone object: the AI video engine turns those into blurry, meaningless mush. Even when the plot involves something else happening (e.g. a fish escaping), keep the main character visibly IN the shot reacting to it (e.g. "the cat leans over the boat edge looking surprised as the fish splashes below"). Every visual_prompt must feature the main character doing/feeling something on screen.
+`;
+
 // Appended on top of the base instruction when the user supplies a finished script.
 const VERBATIM_CLAUSE = `
     VERBATIM SCRIPT MODE (HIGHEST PRIORITY — OVERRIDES ANY REPHRASING RULE):
@@ -116,7 +127,7 @@ const VERBATIM_CLAUSE = `
  * @returns {Promise<{video_metrics: object, scenes: Array}>}
  * @throws {Error} if the API key is missing or generation fails.
  */
-export async function generateScript(topic, { narrator = false, verbatim = false, language = 'en' } = {}) {
+export async function generateScript(topic, { narrator = false, verbatim = false, language = 'en', animation = false } = {}) {
     if (!topic || !topic.trim()) {
         throw new Error("Please provide a topic or rough script.");
     }
@@ -125,6 +136,31 @@ export async function generateScript(topic, { narrator = false, verbatim = false
     }
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+    // Animation mode adds a required per-scene motion_prompt; the default path
+    // keeps the original schema untouched.
+    const responseSchema = animation
+        ? {
+            ...scriptSchema,
+            properties: {
+                ...scriptSchema.properties,
+                scenes: {
+                    ...scriptSchema.properties.scenes,
+                    items: {
+                        ...scriptSchema.properties.scenes.items,
+                        properties: {
+                            ...scriptSchema.properties.scenes.items.properties,
+                            motion_prompt: {
+                                type: "STRING",
+                                description: "A short, concrete description of the motion in this shot (one subject action + one camera move) for image-to-video.",
+                            },
+                        },
+                        required: [...scriptSchema.properties.scenes.items.required, "motion_prompt"],
+                    },
+                },
+            },
+        }
+        : scriptSchema;
 
     const prompt = verbatim
         ? `The text below is the FINAL narration script to use WORD-FOR-WORD. Split it into scenes and build the visuals around it, without changing any of the user's words.\n\nScript:\n"${topic}"`
@@ -135,16 +171,39 @@ export async function generateScript(topic, { narrator = false, verbatim = false
     let systemInstruction = baseInstruction;
     if (verbatim) systemInstruction = `${baseInstruction}\n${VERBATIM_CLAUSE}`;
     else if (language === 'hi') systemInstruction = `${baseInstruction}\n${HINDI_CLAUSE}`;
+    if (animation) systemInstruction = `${systemInstruction}\n${ANIMATION_CLAUSE}`;
 
-    const response = await withRetry(() => ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-            systemInstruction,
-            responseMimeType: "application/json",
-            responseSchema: scriptSchema,
+    // Try models in order; if one is overloaded (503) after retries, fall back
+    // to the next. Overrideable via GEMINI_MODELS (comma-separated).
+    const models = (process.env.GEMINI_MODELS || 'gemini-2.5-flash,gemini-2.0-flash,gemini-2.5-flash-lite')
+        .split(',')
+        .map((m) => m.trim())
+        .filter(Boolean);
+
+    let response = null, lastErr = null;
+    for (const model of models) {
+        try {
+            response = await withRetry(() => ai.models.generateContent({
+                model,
+                contents: prompt,
+                config: {
+                    systemInstruction,
+                    responseMimeType: "application/json",
+                    responseSchema,
+                }
+                // More patient backoff (2s,4s,8s,16s) to ride through short
+                // Google-side overload spikes before falling to the next model.
+            }), { label: `Gemini script (${model})`, retries: 4, baseDelayMs: 2000 });
+            break;
+        } catch (err) {
+            lastErr = err;
+            // A real error (bad request, auth, schema) won't be fixed by another
+            // model — only fall through on transient overload/rate-limit.
+            if (!isTransient(err)) throw err;
+            console.warn(`⚠️  Gemini model "${model}" unavailable — trying next.`);
         }
-    }), { label: 'Gemini script generation' });
+    }
+    if (!response) throw lastErr;
 
     return JSON.parse(response.text);
 }

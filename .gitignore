@@ -40,6 +40,13 @@ backend/jobs/*/
 !backend/temp_audio/.gitkeep
 !backend/public/exports/.gitkeep
 
+# ── Stray generated/recorded media at repo root (NEVER commit) ─
+# One-off screen recordings and pipeline render dumps that land in
+# the project root — large binaries, regenerated/disposable.
+/*.mp4
+/*.mov
+/Screen Recording*.mp4
+
 # ── Remotion ───────────────────────────────────────────────
 .remotion/
 out/

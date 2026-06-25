@@ -30,11 +30,14 @@ const VOICE_PRESETS = {
     // Hindi (Madhur/Swara) reads more slowly than the English voices, so it needs
     // a bigger push to match the same on-screen energy. Note: the final video also
     // applies PLAYBACK_RATE (1.2×) on top of these at render time.
-    male:    { base: { en: "en-US-GuyNeural",   hi: "hi-IN-MadhurNeural" }, pitch: { en: "+0%",  hi: "+0%"  }, rate: { en: "+10%", hi: "+20%" } },
-    female:  { base: { en: "en-US-JennyNeural", hi: "hi-IN-SwaraNeural"  }, pitch: { en: "+0%",  hi: "+0%"  }, rate: { en: "+10%", hi: "+20%" } },
+    male:    { base: { en: "en-US-GuyNeural",   hi: "hi-IN-MadhurNeural" }, pitch: { en: "+0%",  hi: "+0%"  }, rate: { en: "-8%", hi: "+20%" } },
+    female:  { base: { en: "en-IN-NeerjaExpressiveNeural", hi: "hi-IN-SwaraNeural"  }, pitch: { en: "+0%",  hi: "+0%"  }, rate: { en: "-8%", hi: "+20%" } },
     girl:    { base: { en: "en-US-AnaNeural",   hi: "hi-IN-SwaraNeural"  }, pitch: { en: "+0%",  hi: "+30%" }, rate: { en: "+10%", hi: "+20%" } },
     boy:     { base: { en: "en-US-AnaNeural",   hi: "hi-IN-MadhurNeural" }, pitch: { en: "-12%", hi: "+38%" }, rate: { en: "+10%", hi: "+20%" } },
-    cartoon: { base: { en: "en-US-JennyNeural", hi: "hi-IN-SwaraNeural"  }, pitch: { en: "+45%", hi: "+45%" }, rate: { en: "+13%", hi: "+23%" } },
+    // Cartoon = a crisp ADULT voice (Jenny) with a moderate pitch lift: clear,
+    // intelligible diction that still reads as a fun animated character. (The
+    // child voice was cuter but mumbly, and the 1.2× playback raises pitch too.)
+    cartoon: { base: { en: "en-US-JennyNeural", hi: "hi-IN-SwaraNeural"  }, pitch: { en: "+6%", hi: "+8%" }, rate: { en: "+5%", hi: "+12%" } },
 };
 
 // Map Gemini's (possibly loose) voice label onto a preset key. Order matters:
@@ -64,7 +67,10 @@ export async function generateSceneAudio({ sceneNumber, narrationText, voiceType
 
     const tts = new MsEdgeTTS();
     // wordBoundaryEnabled → Edge emits a per-word timestamp stream we use to sync captions.
-    await tts.setMetadata(selectedVoiceModel, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3, { wordBoundaryEnabled: true });
+    // 96kbit (up from 48kbit) for clearer speech — matters most for the
+    // pitch-shifted cartoon voice, which muddies at low bitrate. Timing is
+    // measured from the file afterwards, so this doesn't affect sync.
+    await tts.setMetadata(selectedVoiceModel, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3, { wordBoundaryEnabled: true });
 
     if (!fs.existsSync(outDir)) {
         fs.mkdirSync(outDir, { recursive: true });

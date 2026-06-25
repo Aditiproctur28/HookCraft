@@ -9,6 +9,7 @@ import scriptRoutes from './routes/scriptRoutes.js';
 import audioRoutes from './routes/audioRoutes.js';
 import imageRoutes from './routes/imageRoutes.js';
 import videoRoutes from './routes/videoRoutes.js'; // Phase 2: silent pipeline + SSE
+import animationRoutes from './routes/animationRoutes.js'; // Animation Lab: AI motion clips
 import { renderVideo } from './controllers/exportController.js'; // NEW IMPORT
 
 // Load environment variables (.env)
@@ -38,6 +39,8 @@ app.use('/api/audio', audioRoutes);
 app.use('/api/images', imageRoutes);
 // Phase 2: single-button orchestrated pipeline
 app.use('/api/video', videoRoutes);
+// Animation Lab: AI motion-clip pipeline
+app.use('/api/animation', animationRoutes);
 // NEW: The MP4 Export Route
 app.post('/api/export', renderVideo);
 
