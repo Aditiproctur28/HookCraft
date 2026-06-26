@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 // Route imports
@@ -33,6 +34,15 @@ app.use('/exports', express.static(path.join(__dirname, 'public/exports')));
 // Phase 2: serve per-job assets (images, audio, final MP4) for preview + render
 app.use('/jobs', express.static(path.join(__dirname, 'jobs')));
 
+// Production single-origin deploy: serve the built frontend (frontend/dist) from
+// this same server, so one public (tunnel) URL covers both the site and the API.
+// Skipped automatically in dev when no build exists.
+const frontendDist = path.join(__dirname, '../frontend/dist');
+const hasFrontendBuild = fs.existsSync(path.join(frontendDist, 'index.html'));
+if (hasFrontendBuild) {
+    app.use(express.static(frontendDist));
+}
+
 // Routes
 app.use('/api/scripts', scriptRoutes);
 app.use('/api/audio', audioRoutes);
@@ -44,10 +54,25 @@ app.use('/api/animation', animationRoutes);
 // NEW: The MP4 Export Route
 app.post('/api/export', renderVideo);
 
-// Basic health check
-app.get('/', (req, res) => {
+// Basic health check (always available, even when the frontend build is served at '/').
+app.get('/healthz', (req, res) => {
     res.send('HookCraft Backend is running smoothly!');
 });
+
+if (hasFrontendBuild) {
+    // SPA fallback: any non-API GET that didn't match a static file returns the
+    // app shell so client-side routing / refreshes work. API + asset prefixes are
+    // already handled above, so they never reach here.
+    app.use((req, res, next) => {
+        if (req.method !== 'GET') return next();
+        if (req.path.startsWith('/api')) return next();
+        res.sendFile(path.join(frontendDist, 'index.html'));
+    });
+} else {
+    app.get('/', (req, res) => {
+        res.send('HookCraft Backend is running (no frontend build found — dev mode).');
+    });
+}
 
 const PORT = process.env.PORT || 3001;
 
