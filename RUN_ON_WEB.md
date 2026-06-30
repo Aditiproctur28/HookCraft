@@ -9,7 +9,7 @@ through a **Cloudflare Tunnel** — a free, secure HTTPS link anyone can open.
          ▼
    ┌─────────────────────┐        ┌──────────────────────────────┐
    │  Cloudflare edge    │  tunnel │  YOUR PC                     │
-   │  (free HTTPS URL)   │ ───────▶│  backend on localhost:3002   │
+   │  (free HTTPS URL)   │ ───────▶│  backend on localhost:3010   │
    └─────────────────────┘        │  serves the site + API +     │
                                    │  renders video (Remotion)    │
                                    └──────────────────────────────┘
@@ -47,7 +47,7 @@ cloudflared --version
 
 ### 2. Make sure your backend secrets are set
 
-`backend/.env` already has your keys and `PORT=3002`. Leave `PUBLIC_BASE` blank
+`backend/.env` already has your keys and `PORT=3010`. Leave `PUBLIC_BASE` blank
 for now — you'll paste the tunnel URL into it each session (Step B below).
 
 ---
@@ -70,7 +70,7 @@ This regenerates `frontend/dist`, which the backend serves.
 In **PowerShell window 1**:
 
 ```powershell
-cloudflared tunnel --url http://localhost:3002
+cloudflared tunnel --url http://localhost:3010
 ```
 
 After a second it prints a banner with a line like:
@@ -98,7 +98,7 @@ cd d:\HookCraft\backend
 npm start
 ```
 
-Wait for `Server is locked and loaded on port 3002`.
+Wait for `Server is locked and loaded on port 3010`.
 
 ### D. Open and share
 
@@ -136,7 +136,7 @@ again. Ask me and I'll walk you through it.
 |--------|---------|
 | Install tunnel tool | `winget install --id Cloudflare.cloudflared` |
 | Build frontend | `cd d:\HookCraft\frontend; npm run build` |
-| Start tunnel (window 1) | `cloudflared tunnel --url http://localhost:3002` |
+| Start tunnel (window 1) | `cloudflared tunnel --url http://localhost:3010` |
 | Start backend (window 2) | `cd d:\HookCraft\backend; npm start` |
 | Health check | open `<tunnel-url>/healthz` |
 
@@ -146,7 +146,7 @@ again. Ask me and I'll walk you through it.
   the current tunnel URL. Re-copy it from the tunnel window into `backend/.env`
   and restart the backend.
 - **"Bad gateway" / 502 on the tunnel URL** → the backend isn't running, or it's
-  on a different port than the tunnel (`--url` port must be `3002`).
+  on a different port than the tunnel (`--url` port must be `3010`).
 - **Site loads but API calls fail** → make sure you ran `npm run build` after the
   config changes, so the bundle uses relative (same-origin) API paths.
 - **Renders feel slow** → the renderer fetches assets back through the tunnel.
