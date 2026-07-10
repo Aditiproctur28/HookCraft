@@ -79,3 +79,6 @@ Thumbs.db
 !.vscode/extensions.json
 *.suo
 *.swp
+
+# QA sample renders (generated media — never commit)
+qa_examples/

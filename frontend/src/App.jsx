@@ -17,12 +17,10 @@ function App() {
     <div className="min-h-screen flex flex-col">
       {/* Top nav */}
       <header className="sticky top-0 z-20 border-b border-hairline/70 bg-canvas/70 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <div className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-violet-500 text-lg shadow-lg shadow-brand-600/30">
-              🚀
-            </span>
-            <span className="text-lg font-extrabold tracking-tight text-white">HookCraft</span>
+            <img src="/logo2.png" alt="GenesisFlow" className="h-9 w-9 sm:h-10 sm:w-10" />
+            <span className="text-lg font-extrabold tracking-tight text-white">GenesisFlow</span>
           </div>
 
           {/* Mode switch */}
@@ -38,7 +36,7 @@ function App() {
                 ].join(' ')}
               >
                 <span>{m.icon}</span>
-                <span>{m.label}</span>
+                <span className="hidden sm:inline">{m.label}</span>
                 {m.badge && (
                   <span className="rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-bold text-violet-200">{m.badge}</span>
                 )}
@@ -49,15 +47,15 @@ function App() {
       </header>
 
       {/* Hero + studio */}
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-14">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-10 text-center">
           <h1 className="bg-gradient-to-b from-white to-slate-400 bg-clip-text text-5xl font-black tracking-tight text-transparent sm:text-6xl">
-            {isAnim ? <>Bring a character<br />to life.</> : <>Type a topic.<br />Get a finished video.</>}
+            {isAnim ? <>Bring a character<br />to life.</> : <>Where ideas<br />flow into video.</>}
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-base text-slate-400">
             {isAnim
-              ? 'A proof-of-concept animated character that moves, emotes, and lip-syncs — built in pure code, no GPU, $0.'
-              : 'AI writes the script, paints every scene, voices it, and renders a ready-to-post vertical MP4 — all behind a single button.'}
+              ? 'A proof-of-concept animated character that moves, emotes, and lip-syncs — built in pure code.'
+              : 'Turn a single prompt into a complete AI-generated video.'}
           </p>
         </div>
 
@@ -65,7 +63,7 @@ function App() {
       </main>
 
       <footer className="border-t border-hairline/60 py-6 text-center text-xs text-slate-600">
-        HookCraft · Gemini × FLUX × Remotion
+        GenesisFlow · Gemini × FLUX × Remotion
       </footer>
     </div>
   );

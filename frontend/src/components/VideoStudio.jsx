@@ -16,7 +16,7 @@ const STAGE_LABEL = {
     character: 'Creating Character…',
     artwork: 'Creating AI Artwork…',
     voiceover: 'Generating Voiceover…',
-    render: 'Rendering Final MP4…',
+    render: 'Rendering Final Video…',
     done: 'Done!',
     error: 'Failed',
 };
@@ -72,7 +72,7 @@ function OptionGroup({ label, options, value, onChange, disabled, cols = 2 }) {
     return (
         <div className="mt-5">
             <label className="mb-2 block text-sm font-semibold text-slate-300">{label}</label>
-            <div className={`grid gap-3 ${cols === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            <div className={`grid gap-3 ${cols === 3 ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'}`}>
                 {options.map((opt) => {
                     const selected = value === opt.key;
                     return (
@@ -206,7 +206,7 @@ export default function VideoStudio() {
         : isDone ? 'Generate Another' : 'Generate Video';
 
     return (
-        <div className="rounded-3xl border border-hairline bg-surface/80 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-8">
+        <div className="rounded-3xl border border-hairline bg-surface/80 p-4 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-8">
             {/* Topic / script input */}
             <label className="mb-2 block text-sm font-semibold text-slate-300">
                 {scriptMode === 'verbatim' ? 'Your script (spoken word-for-word)' : 'Your idea'}
@@ -218,7 +218,7 @@ export default function VideoStudio() {
                 disabled={isBusy}
                 placeholder={scriptMode === 'verbatim'
                     ? 'Paste the exact narration you want spoken. Every word is kept as-is; we only split it into scenes and add visuals…'
-                    : 'e.g., A single man explains why active listening wins trust — fast-paced vertical short…'}
+                    : 'e.g., A single man explains why active listening wins trust — fast-paced short…'}
                 className="w-full resize-y rounded-2xl border border-hairline bg-surface-2 p-4 text-[15px] text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/40 disabled:opacity-60"
             />
 
@@ -332,7 +332,7 @@ export default function VideoStudio() {
                     <h3 className="mb-5 flex items-center gap-2 text-lg font-bold text-white">
                         <span className="text-emerald-400">✅</span> Your video is ready
                     </h3>
-                    <div className="overflow-hidden rounded-[20px] border-2 border-brand-500/60 shadow-2xl shadow-brand-600/20">
+                    <div className="w-full overflow-hidden rounded-[20px] border-2 border-brand-500/60 shadow-2xl shadow-brand-600/20" style={{ maxWidth: `${previewAspect.viewW}px` }}>
                         <Player
                             component={MasterVideo}
                             inputProps={{ scenes: job.scenes, width: previewAspect.compW, height: previewAspect.compH, captionStyle: job.captionStyle || captionStyle }}
@@ -340,7 +340,7 @@ export default function VideoStudio() {
                             fps={30}
                             compositionWidth={job.width || previewAspect.compW}
                             compositionHeight={job.height || previewAspect.compH}
-                            style={{ width: `${previewAspect.viewW}px`, height: `${previewAspect.viewH}px` }}
+                            style={{ width: '100%', aspectRatio: `${previewAspect.compW} / ${previewAspect.compH}` }}
                             controls
                             autoPlay
                         />
@@ -348,7 +348,7 @@ export default function VideoStudio() {
                     {job.downloadUrl && (
                         <a href={job.downloadUrl} download
                             className="mt-6 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-7 py-3.5 text-[15px] font-bold text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400">
-                            ⬇️ Download Final .MP4
+                            ⬇️ Download Final Video
                         </a>
                     )}
                 </div>

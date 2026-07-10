@@ -7,7 +7,14 @@ const FADE = 10;
 
 export const MasterVideo = ({ scenes, captionStyle = 'word' }) => {
     const frame = useCurrentFrame();
-    const { fps } = useVideoConfig();
+    const { fps, width, height } = useVideoConfig();
+    // Landscape (16:9) art can come back square from providers that ignore the
+    // requested size, which a plain object-fit:cover would crop top & bottom.
+    // For wide frames we show the whole image (contain) over a blurred, zoomed
+    // copy of itself so the frame is filled with no crop and no black bars.
+    // Vertical (9:16) is left exactly as before (cover) — a square fills a tall
+    // frame cleanly and the blurred bands would be large/ugly there.
+    const fillBlur = width >= height;
 
     if (!scenes || scenes.length === 0) {
         return null;
@@ -48,9 +55,17 @@ export const MasterVideo = ({ scenes, captionStyle = 'word' }) => {
 
                 return (
                     <AbsoluteFill key={`img-${i}`} style={{ opacity }}>
+                        {fillBlur && scene.imageUrl && (
+                            // Blurred, slightly over-zoomed backdrop to fill a wide frame
+                            // behind a non-16:9 (e.g. square) image — no black bars.
+                            <AbsoluteFill style={{ transform: `scale(${scale * 1.1})`, transformOrigin: 'center center' }}>
+                                <Img src={scene.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(28px) brightness(0.6)' }} />
+                            </AbsoluteFill>
+                        )}
                         <AbsoluteFill style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}>
                             {scene.imageUrl && (
-                                <Img src={scene.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                // Wide frame: show the whole image (no crop). Tall frame: cover as before.
+                                <Img src={scene.imageUrl} style={{ width: '100%', height: '100%', objectFit: fillBlur ? 'contain' : 'cover' }} />
                             )}
                         </AbsoluteFill>
                     </AbsoluteFill>

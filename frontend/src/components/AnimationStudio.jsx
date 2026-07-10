@@ -52,7 +52,7 @@ function OptionGroup({ label, options, value, onChange, disabled, cols = 2 }) {
     return (
         <div className="mt-5">
             <label className="mb-2 block text-sm font-semibold text-slate-300">{label}</label>
-            <div className={`grid gap-3 ${cols === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            <div className={`grid gap-3 ${cols === 3 ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'}`}>
                 {options.map((opt) => {
                     const selected = value === opt.key;
                     return (
@@ -161,7 +161,7 @@ export default function AnimationStudio() {
     const buttonLabel = isRunning ? (job.message || 'Working…') : isDone ? 'Generate Another' : 'Generate Animation';
 
     return (
-        <div className="rounded-3xl border border-hairline bg-surface/80 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-8">
+        <div className="rounded-3xl border border-hairline bg-surface/80 p-4 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-8">
             <div className="mb-4 rounded-2xl border border-violet-500/30 bg-violet-500/10 p-3 text-center text-xs text-violet-200">
                 ⏳ Heads-up: real AI animation is slow on the free engine — expect <b>~3–6 min per scene</b>. Keep this tab open.
             </div>
@@ -262,7 +262,7 @@ export default function AnimationStudio() {
                     <h3 className="mb-5 flex items-center gap-2 text-lg font-bold text-white">
                         <span className="text-emerald-400">✅</span> Your animation is ready
                     </h3>
-                    <div className="overflow-hidden rounded-[20px] border-2 border-violet-500/60 shadow-2xl shadow-violet-600/20">
+                    <div className="w-full overflow-hidden rounded-[20px] border-2 border-violet-500/60 shadow-2xl shadow-violet-600/20" style={{ maxWidth: `${previewAspect.viewW}px` }}>
                         <Player
                             component={AnimatedVideo}
                             inputProps={{ scenes: job.scenes, captionStyle: job.captionStyle || captionStyle }}
@@ -270,7 +270,7 @@ export default function AnimationStudio() {
                             fps={30}
                             compositionWidth={job.width || previewAspect.compW}
                             compositionHeight={job.height || previewAspect.compH}
-                            style={{ width: `${previewAspect.viewW}px`, height: `${previewAspect.viewH}px` }}
+                            style={{ width: '100%', aspectRatio: `${previewAspect.compW} / ${previewAspect.compH}` }}
                             controls
                             autoPlay
                         />
@@ -278,7 +278,7 @@ export default function AnimationStudio() {
                     {job.downloadUrl && (
                         <a href={job.downloadUrl} download
                             className="mt-6 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-7 py-3.5 text-[15px] font-bold text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400">
-                            ⬇️ Download Final .MP4
+                            ⬇️ Download Final Video
                         </a>
                     )}
                 </div>

@@ -70,29 +70,62 @@ pollinationsProvider.providerName = 'pollinations';
 pollinationsProvider.isAvailable = () => true;
 
 /**
- * Hugging Face Inference — FLUX.1-schnell. Kept as an optional provider.
- * NOTE: HF's free tier is metered monthly and returns 402 when depleted, so it
- * is NOT in the default order.
+ * Hugging Face Inference — FLUX.1-schnell. Unlike Cloudflare, this model HONORS
+ * the requested width/height, so it's the provider used for non-square (e.g.
+ * 16:9 landscape) renders that would otherwise be cropped.
+ *
+ * Free HF accounts meter monthly and return 402 when depleted, so we rotate
+ * through a pool of tokens (HF_TOKENS, else single HF_TOKEN) — mirroring the
+ * Animation Lab — advancing to the next account on 402/429 and remembering the
+ * last working one so subsequent scenes don't re-hit a spent token.
  */
+function getHfTokens() {
+    return (process.env.HF_TOKENS || process.env.HF_TOKEN || '')
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+}
+let hfTokenCursor = 0;
+
 export async function huggingFaceProvider({ prompt, width = 512, height = 896, seed }) {
-    const token = process.env.HF_TOKEN ? process.env.HF_TOKEN.trim() : '';
-    if (!token) throw new Error('Hugging Face not configured (set HF_TOKEN).');
+    const tokens = getHfTokens();
+    if (tokens.length === 0) throw new Error('Hugging Face not configured (set HF_TOKEN or HF_TOKENS).');
 
     const parameters = { width, height };
     if (seed !== undefined && seed !== null) parameters.seed = seed;
 
-    const resp = await axios({
-        url: 'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell',
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'image/jpeg' },
-        data: { inputs: prompt, parameters },
-        responseType: 'arraybuffer',
-        timeout: 120000,
-    });
-    return Buffer.from(resp.data);
+    let lastErr = null;
+    for (let i = 0; i < tokens.length; i++) {
+        const idx = (hfTokenCursor + i) % tokens.length;
+        const token = tokens[idx];
+        try {
+            const resp = await axios({
+                url: 'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell',
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'image/jpeg' },
+                data: { inputs: prompt, parameters },
+                responseType: 'arraybuffer',
+                timeout: 120000,
+            });
+            hfTokenCursor = idx; // remember the working account for the next scene
+            return Buffer.from(resp.data);
+        } catch (err) {
+            lastErr = err;
+            const status = err?.response?.status;
+            // 402 = monthly quota spent, 429 = rate-limited → rotate to the next
+            // free account. Any other error is a real failure for THIS provider;
+            // let it bubble so the orchestrator falls back to the next provider.
+            if (status === 402 || status === 429) {
+                if (tokens.length > 1) console.warn(`⚠️  HF token #${idx + 1} exhausted (HTTP ${status}) — rotating to next account.`);
+                continue;
+            }
+            throw err;
+        }
+    }
+    throw lastErr || new Error('All Hugging Face tokens are exhausted.');
 }
 huggingFaceProvider.providerName = 'huggingface';
-huggingFaceProvider.isAvailable = () => !!(process.env.HF_TOKEN && process.env.HF_TOKEN.trim());
+huggingFaceProvider.isAvailable = () => getHfTokens().length > 0;
 
 export const PROVIDERS = {
     cloudflare: cloudflareProvider,
@@ -101,12 +134,22 @@ export const PROVIDERS = {
     hf: huggingFaceProvider, // alias
 };
 
-/** Ordered list of provider functions from IMAGE_PROVIDERS (default: cloudflare → pollinations). */
-export function resolveProviderChain() {
-    const order = (process.env.IMAGE_PROVIDERS || 'cloudflare,pollinations')
-        .split(',')
-        .map((s) => s.trim().toLowerCase())
-        .filter(Boolean);
+/**
+ * Ordered list of provider functions to try.
+ * - If IMAGE_PROVIDERS is set, it wins verbatim (advanced override).
+ * - Otherwise the default is ASPECT-AWARE: landscape (16:9) prefers HuggingFace,
+ *   because Cloudflare's FLUX only outputs squares — which get cropped top/bottom
+ *   when stretched into a wide frame. Vertical (9:16) keeps Cloudflare first,
+ *   exactly as before (a square cover-crops cleanly into a tall frame).
+ * @param {'16:9'|'9:16'} [aspectRatio]
+ */
+export function resolveProviderChain(aspectRatio) {
+    const envOrder = process.env.IMAGE_PROVIDERS;
+    const order = envOrder
+        ? envOrder.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+        : (aspectRatio === '16:9'
+            ? ['huggingface', 'cloudflare']   // landscape: honor real dimensions
+            : ['cloudflare', 'pollinations']); // vertical: unchanged from before
     const chain = order.map((name) => PROVIDERS[name]).filter(Boolean);
     // De-dupe (in case of alias collisions) while preserving order.
     return [...new Set(chain)];

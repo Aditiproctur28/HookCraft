@@ -22,7 +22,9 @@ export async function generateSceneImage({ visualPrompt, sceneNumber, outDir, wi
     }
 
     const enhancedPrompt = `${visualPrompt}, professional digital art, cinematic lighting, highly detailed, 8k resolution`;
-    const chain = resolveProviderChain();
+    // Landscape renders need a provider that honors width/height (Cloudflare only
+    // outputs squares); the chain default keys off the aspect for that reason.
+    const chain = resolveProviderChain(width > height ? '16:9' : '9:16');
     if (chain.length === 0) {
         throw new Error('No image providers configured. Set IMAGE_PROVIDERS in .env.');
     }

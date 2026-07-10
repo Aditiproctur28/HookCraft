@@ -30,8 +30,8 @@ const VOICE_PRESETS = {
     // Hindi (Madhur/Swara) reads more slowly than the English voices, so it needs
     // a bigger push to match the same on-screen energy. Note: the final video also
     // applies PLAYBACK_RATE (1.2×) on top of these at render time.
-    male:    { base: { en: "en-US-GuyNeural",   hi: "hi-IN-MadhurNeural" }, pitch: { en: "+0%",  hi: "+0%"  }, rate: { en: "-8%", hi: "+20%" } },
-    female:  { base: { en: "en-IN-NeerjaExpressiveNeural", hi: "hi-IN-SwaraNeural"  }, pitch: { en: "+0%",  hi: "+0%"  }, rate: { en: "-8%", hi: "+20%" } },
+    male:    { base: { en: "en-US-GuyNeural",   hi: "hi-IN-MadhurNeural" }, pitch: { en: "+0%",  hi: "+0%"  }, rate: { en: "-2%", hi: "+20%" } },
+    female:  { base: { en: "en-US-JennyNeural", hi: "hi-IN-SwaraNeural"  }, pitch: { en: "+0%",  hi: "+0%"  }, rate: { en: "-2%", hi: "+20%" } },
     girl:    { base: { en: "en-US-AnaNeural",   hi: "hi-IN-SwaraNeural"  }, pitch: { en: "+0%",  hi: "+30%" }, rate: { en: "+10%", hi: "+20%" } },
     boy:     { base: { en: "en-US-AnaNeural",   hi: "hi-IN-MadhurNeural" }, pitch: { en: "-12%", hi: "+38%" }, rate: { en: "+10%", hi: "+20%" } },
     // Cartoon = a crisp ADULT voice (Jenny) with a moderate pitch lift: clear,
